@@ -1,4 +1,6 @@
 package com.vectorium.core.model;
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -36,6 +38,22 @@ public final class StageDescriptorTest {
             } catch (IllegalArgumentException exception) {
                 assertEquals(true, exception.getMessage().length()>0);
             }
+        }
+    }
+    @Test
+    public void shouldStoreImmutableParameterDefinitions() {
+        ParamSpec parameter=new ParamSpec("threshold", "Threshold", "Detection threshold", ParamType.DOUBLE, Double.valueOf(128.0), Double.valueOf(0.0), Double.valueOf(255.0));
+        List<ParamSpec> source=new ArrayList<ParamSpec>();
+        source.add(parameter);
+        StageDescriptor descriptor=new StageDescriptor("trace", "Trace Edges", "Finds image edges", true, source);
+        source.clear();
+        assertEquals(1, descriptor.getParameters().size());
+        assertEquals(parameter, descriptor.getParameters().get(0));
+        try {
+            descriptor.getParameters().clear();
+            fail("Expected descriptor parameters to be unmodifiable");
+        } catch (UnsupportedOperationException exception) {
+            assertEquals(UnsupportedOperationException.class, exception.getClass());
         }
     }
     @Test
