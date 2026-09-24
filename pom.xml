@@ -28,9 +28,9 @@
         <maven.compiler.testRelease>8</maven.compiler.testRelease>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <picocli.version>4.7.6</picocli.version>
-        <junit.version>5.10.2</junit.version>
-        <teavm.version>0.10.0</teavm.version>
+        <picocli.version>4.7.7</picocli.version>
+        <junit.version>5.12.2</junit.version>
+        <teavm.version>0.12.0</teavm.version>
         <jmh.version>1.37</jmh.version>
     </properties>
     <dependencyManagement>
@@ -83,7 +83,7 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
-                    <version>3.13.0</version>
+                    <version>3.15.0</version>
                     <configuration>
                         <release>${maven.compiler.release}</release>
                         <testRelease>${maven.compiler.testRelease}</testRelease>
@@ -95,7 +95,7 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
-                    <version>3.2.5</version>
+                    <version>3.5.6</version>
                     <configuration>
                         <useModulePath>false</useModulePath>
                     </configuration>
@@ -103,12 +103,12 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-shade-plugin</artifactId>
-                    <version>3.5.3</version>
+                    <version>3.6.2</version>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-jar-plugin</artifactId>
-                    <version>3.4.1</version>
+                    <version>3.5.0</version>
                 </plugin>
                 <plugin>
                     <groupId>org.teavm</groupId>
@@ -121,7 +121,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-enforcer-plugin</artifactId>
-                <version>3.5.0</version>
+                <version>3.6.3</version>
                 <executions>
                     <execution>
                         <id>require-jdk-25</id>
