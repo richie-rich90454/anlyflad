@@ -1,0 +1,16 @@
+# Fixtures
+Small, deterministic assets for smoke tests and manual front-end checks.
+| File | Coverage |
+|---|---|
+| `minimal.svg` | One nested path stack for parser, writer, and export smoke tests |
+| `shape-suite.svg` | Groups, transforms, opacity, basic shapes, curves, and open paths |
+| `cleaner-suite.svg` | Duplicate, nested, speck, hole, and open-path cases for cleaner stages |
+| `checkerboard.png` | 64 by 64 opaque black-and-white raster for preprocessing, thresholding, and run-based vectorization |
+All files are committed as intentionally small inputs. Run the CLI from the repository root after building it:
+```text
+java -jar cli/target/anlyflad-cli.jar fixtures/minimal.svg --output target/fixtures/minimal.svg
+java -jar cli/target/anlyflad-cli.jar fixtures/shape-suite.svg --output target/fixtures/shape-suite.svg
+java -jar cli/target/anlyflad-cli.jar fixtures/cleaner-suite.svg --output target/fixtures/cleaner-suite.svg
+java -jar cli/target/anlyflad-cli.jar fixtures/checkerboard.png --output target/fixtures/checkerboard.svg
+```
+The SVG fixtures exercise the focused SVG subset supported by the parser. Strokes and unsupported SVG elements may be ignored or reduced to fill paths; the fixtures intentionally avoid relying on a lossless round trip.
