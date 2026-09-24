@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.vectorium</groupId>
+        <artifactId>anlyflad-parent</artifactId>
+        <version>1.0.0</version>
+    </parent>
+    <artifactId>anlyflad-web</artifactId>
+    <name>Anlyflad Web</name>
+    <dependencies>
+        <dependency>
+            <groupId>com.vectorium</groupId>
+            <artifactId>anlyflad-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.teavm</groupId>
+            <artifactId>teavm-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.teavm</groupId>
+            <artifactId>teavm-jso</artifactId>
+        </dependency>
+    </dependencies>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.teavm</groupId>
+                <artifactId>teavm-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>compile-web</id>
+                        <phase>process-classes</phase>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                        <configuration>
+                            <mainClass>com.vectorium.web.VectoriumWeb</mainClass>
+                            <targetDirectory>${project.build.directory}/webapp</targetDirectory>
+                            <targetFileName>anlyflad.js</targetFileName>
+                            <targetType>JAVASCRIPT</targetType>
+                            <jsModuleType>ES2015</jsModuleType>
+                            <optimizationLevel>ADVANCED</optimizationLevel>
+                            <minifying>true</minifying>
+                            <mainPageIncluded>false</mainPageIncluded>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>
