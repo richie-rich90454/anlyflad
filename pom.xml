@@ -87,6 +87,9 @@
                     <configuration>
                         <release>${maven.compiler.release}</release>
                         <testRelease>${maven.compiler.testRelease}</testRelease>
+                        <compilerArgs>
+                            <arg>-Xlint:-options</arg>
+                        </compilerArgs>
                     </configuration>
                 </plugin>
                 <plugin>
