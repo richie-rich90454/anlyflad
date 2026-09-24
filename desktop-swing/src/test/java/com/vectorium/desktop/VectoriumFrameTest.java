@@ -28,7 +28,7 @@ public final class VectoriumFrameTest {
             assertEquals(15, frame.getStageInspector().getStageCount());
             assertSame(frame.getCanvas(), frame.getSplitPane().getLeftComponent());
             assertSame(frame.getStageInspector(), frame.getSplitPane().getRightComponent());
-            assertSame(frame.getStatusBar(), ((javax.swing.JPanel)frame.getContentPane()).getComponent(1));
+            assertSame(frame.getStatusBar(), ((javax.swing.JPanel)frame.getContentPane()).getComponent(2));
         } finally {
             SwingUtilities.invokeAndWait(new DisposeFrame(frame));
         }
