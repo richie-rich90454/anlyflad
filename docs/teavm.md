@@ -14,16 +14,16 @@ web-teavm/target/webapp/anlyflad.js
 ## JDK compatibility
 | Setting | Configured value | Meaning |
 |---|---|---|
-| Maven Enforcer | `[25,)` | The normal reactor rejects build JDKs below 25 |
+| Maven Enforcer | `[25,)` | The reactor rejects build JDKs below 25 |
 | `maven.compiler.source` / `target` | `1.8` | Source/target compatibility properties |
 | `maven.compiler.release` | `8` | Main Java bytecode release |
 | `maven.compiler.testRelease` | `8` | Test Java bytecode release |
 | `teavm.version` | `0.12.0` | TeaVM dependencies and Maven plugin |
-TeaVM 0.12.0 cannot read the major-version-69 classfiles emitted by JDK 25 (`Unsupported class file major version 69`). Select JDK 21 for the web build and skip only the parent Enforcer check:
+The web module declares `teavm-classlib`, allowing TeaVM to use its Java runtime replacements instead of host JDK classfiles. With that dependency present, the module builds under the normal JDK 25 Enforcer rule:
 ```text
-mvn -pl web-teavm -am package "-Denforcer.skip=true"
+mvn -pl web-teavm -am package
 ```
-The JDK 21 build is required for this module only; the native modules use the parent Enforcer rule and build with JDK 25 or newer. Java 8 is the compilation target, not a supported alternative for the build tool. The browser receives generated JavaScript and does not need a JVM.
+Java 8 is the compilation target, not a supported alternative for the build tool. The browser receives generated JavaScript and does not need a JVM.
 ## Shared-code boundary
 `VectoriumWeb` uses JSO interfaces in `WebDom` for the DOM, file input, `FileReader`, canvas image data, event listeners, and URI encoding. The web path constructs `VectorDocument` values and calls the same core `SvgParser`, `StageRegistry`, `Pipeline`, and `SvgCache` classes as the native front ends. The web module does not use AWT, ImageIO, Swing, or a server API.
 The core SVG parser is a manual scanner over the source string, and the path parser uses the core Bezier flattener. This keeps browser-side parsing on the TeaVM-compiled core path; there is no separate JavaScript SVG parser in the repository.
