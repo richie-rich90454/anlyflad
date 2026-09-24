@@ -75,6 +75,11 @@
                 <artifactId>teavm-jso</artifactId>
                 <version>${teavm.version}</version>
             </dependency>
+            <dependency>
+                <groupId>org.teavm</groupId>
+                <artifactId>teavm-classlib</artifactId>
+                <version>${teavm.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
     <build>
