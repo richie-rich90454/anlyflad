@@ -23,9 +23,35 @@
             <groupId>org.teavm</groupId>
             <artifactId>teavm-jso</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.teavm</groupId>
+            <artifactId>teavm-classlib</artifactId>
+        </dependency>
     </dependencies>
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.5.0</version>
+                <executions>
+                    <execution>
+                        <id>copy-webapp</id>
+                        <phase>process-classes</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/webapp</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>src/main/webapp</directory>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.teavm</groupId>
                 <artifactId>teavm-maven-plugin</artifactId>
@@ -44,7 +70,6 @@
                             <jsModuleType>ES2015</jsModuleType>
                             <optimizationLevel>ADVANCED</optimizationLevel>
                             <minifying>true</minifying>
-                            <mainPageIncluded>false</mainPageIncluded>
                         </configuration>
                     </execution>
                 </executions>
