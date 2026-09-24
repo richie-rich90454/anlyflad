@@ -1,0 +1,15 @@
+<svg width="128" height="128" viewBox="0 0 128 128">
+  <rect x="0" y="0" width="128" height="128" fill="#ffffff"/>
+  <g fill="#111827">
+    <rect x="8" y="8" width="40" height="40"/>
+    <rect x="12" y="12" width="32" height="32"/>
+    <rect x="80" y="8" width="40" height="40"/>
+    <rect x="84" y="12" width="32" height="32"/>
+    <rect x="8" y="80" width="40" height="40"/>
+    <rect x="12" y="84" width="32" height="32"/>
+  </g>
+  <path d="M80 80 L120 80 L120 120 L80 120 Z M92 92 L108 92 L108 108 L92 108 Z" fill="#2563eb" fill-rule="evenodd"/>
+  <path d="M52 48 L68 48 L68 64 L52 64 Z" fill="#ef4444"/>
+  <path d="M56 52 L64 52 L64 60 L56 60 Z" fill="#ffffff"/>
+  <polyline points="52 72 60 80 68 72 76 80" fill="none" stroke="#16a34a" stroke-width="3"/>
+</svg>
