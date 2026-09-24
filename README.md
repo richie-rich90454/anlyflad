@@ -12,11 +12,11 @@ mvn test
 mvn -pl cli -am package
 mvn -pl desktop-swing -am package
 ```
-Build the browser module with JDK 21 selected and the Enforcer check skipped because TeaVM 0.12.0 cannot read JDK 25 classfiles:
+Build the browser module with the same JDK:
 ```text
-mvn -pl web-teavm -am package "-Denforcer.skip=true"
+mvn -pl web-teavm -am package
 ```
-`-am` includes `core`, which is required by each application module. The parent reactor's Enforcer rule otherwise requires JDK 25.
+`-am` includes `core`, which is required by each application module. The parent reactor's Enforcer rule requires JDK 25. The web module includes TeaVM's class library so the generated JavaScript does not depend on host JDK classfiles.
 Expected outputs:
 | Module | Output |
 |---|---|
