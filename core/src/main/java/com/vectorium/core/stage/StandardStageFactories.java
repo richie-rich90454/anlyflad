@@ -106,7 +106,7 @@ public final class StandardStageFactories {
         private UnionFactory() {
         }
         public Stage create() {
-            return new UnionStage(StandardStageDescriptors.UNION, 1.0);
+            return new UnionStage(StandardStageDescriptors.UNION, 0.0);
         }
     }
     public static final class SimplifyFactory implements StageFactory {
