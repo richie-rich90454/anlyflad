@@ -15,6 +15,9 @@ public final class VectorDocument {
         this(documentId, origin, paths, width, height, pixels, null);
     }
     public VectorDocument(String documentId, Origin origin, List<VectorPath> paths, int width, int height, int[] pixels, String sourceSvg) {
+        this(documentId, origin, paths, width, height, pixels, sourceSvg, true);
+    }
+    private VectorDocument(String documentId, Origin origin, List<VectorPath> paths, int width, int height, int[] pixels, String sourceSvg, boolean copyPixels) {
         if (documentId==null||documentId.trim().isEmpty()) {
             throw new IllegalArgumentException("documentId must not be blank");
         }
@@ -44,8 +47,11 @@ public final class VectorDocument {
         this.paths=Collections.unmodifiableList(copiedPaths);
         this.width=width;
         this.height=height;
-        this.pixels=Arrays.copyOf(pixels, pixels.length);
+        this.pixels=copyPixels?Arrays.copyOf(pixels, pixels.length):pixels;
         this.sourceSvg=sourceSvg;
+    }
+    public static VectorDocument fromOwnedPixels(String documentId, Origin origin, List<VectorPath> paths, int width, int height, int[] pixels) {
+        return new VectorDocument(documentId, origin, paths, width, height, pixels, null, false);
     }
     public static VectorDocument emptySvg(String documentId, int width, int height) {
         return new VectorDocument(documentId, new SvgOrigin(documentId), Collections.<VectorPath>emptyList(), width, height, new int[pixelLength(width, height)]);
@@ -77,8 +83,22 @@ public final class VectorDocument {
     public VectorDocument withPaths(List<VectorPath> paths) {
         return new VectorDocument(documentId, origin, paths, width, height, pixels);
     }
+    public VectorDocument withPathsAndOwnedPixels(List<VectorPath> paths) {
+        return new VectorDocument(documentId, origin, paths, width, height, pixels, null, false);
+    }
+    public VectorDocument withPathsAndSize(List<VectorPath> paths, int width, int height) {
+        validateSize(width, height);
+        int length=pixelLength(width, height);
+        if (length==pixels.length) {
+            return new VectorDocument(documentId, origin, paths, width, height, pixels, null, false);
+        }
+        return new VectorDocument(documentId, origin, paths, width, height, Arrays.copyOf(pixels, length));
+    }
     public VectorDocument withPixels(int[] pixels) {
         return new VectorDocument(documentId, origin, paths, width, height, pixels);
+    }
+    public VectorDocument withOwnedPixels(int[] pixels) {
+        return new VectorDocument(documentId, origin, paths, width, height, pixels, null, false);
     }
     public VectorDocument withSize(int width, int height) {
         validateSize(width, height);
