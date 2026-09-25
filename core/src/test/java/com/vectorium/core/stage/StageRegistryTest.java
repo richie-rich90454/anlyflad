@@ -11,6 +11,7 @@ import com.vectorium.core.model.PathId;
 import com.vectorium.core.model.SvgOrigin;
 import com.vectorium.core.model.VectorDocument;
 import com.vectorium.core.model.VectorPath;
+import com.vectorium.core.raster.AdaptiveColorQuantizer;
 public final class StageRegistryTest {
     @Test
     public void shouldExposeAllStagesInDefaultOrder() {
@@ -31,6 +32,12 @@ public final class StageRegistryTest {
         } catch (UnsupportedOperationException exception) {
             assertEquals(UnsupportedOperationException.class, exception.getClass());
         }
+    }
+    @Test
+    public void shouldExposeAdaptiveColorLimit() {
+        assertEquals(2, StandardStageDescriptors.QUANTIZE.getParameters().size());
+        assertEquals("maxColors", StandardStageDescriptors.QUANTIZE.getParameters().get(1).getName());
+        assertEquals(Integer.valueOf(AdaptiveColorQuantizer.DEFAULT_MAX_COLORS), StandardStageDescriptors.QUANTIZE.getParameters().get(1).getDefaultValue());
     }
     @Test
     public void shouldCreateRunnablePipelineAndApplyParameterOverrides() throws Exception {
