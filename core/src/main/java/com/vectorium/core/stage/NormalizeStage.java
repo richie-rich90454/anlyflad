@@ -1,9 +1,11 @@
 package com.vectorium.core.stage;
 import java.util.ArrayList;
+import java.util.List;
 import com.vectorium.core.model.StageDescriptor;
 import com.vectorium.core.model.VectorDocument;
 import com.vectorium.core.model.VectorPath;
 public final class NormalizeStage implements ConfigurableStage, ColorTransformStage {
+    private static final long MAX_PIXELS=100L*1024L*1024L;
     private final StageDescriptor descriptor;
     private final boolean enabled;
     public NormalizeStage(StageDescriptor descriptor, boolean enabled) {
@@ -57,19 +59,16 @@ public final class NormalizeStage implements ConfigurableStage, ColorTransformSt
         }
         ArrayList<VectorPath> normalized=new ArrayList<VectorPath>(document.getPaths().size());
         for (int index=0;index<document.getPaths().size();index++) {
-            VectorPath path=document.getPaths().get(index);
-            double[] source=path.getCoordinates();
-            double[] coordinates=new double[source.length];
-            for (int coordinate=0;coordinate<source.length;coordinate+=2) {
-                coordinates[coordinate]=source[coordinate]-minX;
-                coordinates[coordinate+1]=source[coordinate+1]-minY;
-            }
-            normalized.add(path.withGeometry(coordinates, path.isClosed()));
+            normalized.add(translate(document.getPaths().get(index), minX, minY));
         }
         int width=dimension(maxX-minX);
         int height=dimension(maxY-minY);
         if (document.getOrigin().isRaster()) {
-            int[] pixels=new int[width*height];
+            long pixelLength=(long)width*(long)height;
+            if (pixelLength>MAX_PIXELS||pixelLength>Integer.MAX_VALUE) {
+                throw new StageException("normalized dimensions exceed the 100-megapixel limit");
+            }
+            int[] pixels=new int[(int)pixelLength];
             for (int y=0;y<height;y++) {
                 int sourceY=(int)Math.round(minY)+y;
                 if (sourceY<0||sourceY>=document.getHeight()) {
@@ -83,9 +82,40 @@ public final class NormalizeStage implements ConfigurableStage, ColorTransformSt
                     pixels[y*width+x]=document.getOwnedPixels()[sourceY*document.getWidth()+sourceX];
                 }
             }
-            return new VectorDocument(document.getDocumentId(), document.getOrigin(), normalized, width, height, pixels);
+            return VectorDocument.fromOwnedPixels(document.getDocumentId(), document.getOrigin(), normalized, width, height, pixels);
         }
-        return document.withPaths(normalized).withSize(width, height);
+        return document.withPathsAndSize(normalized, width, height);
+    }
+    private VectorPath translate(VectorPath path, double minX, double minY) {
+        List<double[]> rings=path.getRings();
+        List<double[]> shiftedRings=new ArrayList<double[]>(rings.size());
+        for (int index=0;index<rings.size();index++) {
+            double[] source=rings.get(index);
+            double[] shifted=new double[source.length];
+            for (int coordinate=0;coordinate<source.length;coordinate+=2) {
+                shifted[coordinate]=source[coordinate]-minX;
+                shifted[coordinate+1]=source[coordinate+1]-minY;
+            }
+            shiftedRings.add(shifted);
+        }
+        double[][] cubic=path.getCubicRingCoordinates();
+        double[][] shiftedCubic=null;
+        if (cubic.length>0) {
+            shiftedCubic=new double[cubic.length][];
+            for (int index=0;index<cubic.length;index++) {
+                if (cubic[index]==null) {
+                    continue;
+                }
+                double[] source=cubic[index];
+                double[] shifted=new double[source.length];
+                for (int coordinate=0;coordinate<source.length;coordinate+=2) {
+                    shifted[coordinate]=source[coordinate]-minX;
+                    shifted[coordinate+1]=source[coordinate+1]-minY;
+                }
+                shiftedCubic[index]=shifted;
+            }
+        }
+        return path.withRingsAndArea(shiftedRings, shiftedCubic, path.getArea());
     }
     private int dimension(double value) throws StageException {
         if (!Double.isFinite(value)||value<0.0||value>Integer.MAX_VALUE) {
