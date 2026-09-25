@@ -63,20 +63,18 @@ public final class WebDom {
     }
     @JSFunctor
     public interface TextCallback extends JSObject {
-        void accept(String value);
+        void accept(String value, String error);
     }
     @JSFunctor
     public interface RasterCallback extends JSObject {
-        void accept(int width, int height, ImageData data);
+        void accept(int width, int height, ImageData data, int sourceWidth, int sourceHeight, String error);
     }
     @JSBody(params={}, script="return document;")
     public static native Document document();
-    @JSBody(params={"file","callback"}, script="var reader = new FileReader(); reader.onload = function(){callback(reader.result);}; reader.onerror = function(){callback('');}; reader.readAsText(file);")
+    @JSBody(params={"file","callback"}, script="var reader = new FileReader(); reader.onload = function(){callback(reader.result, '');}; reader.onerror = function(){callback('', 'Could not read the file.');}; reader.readAsText(file);")
     public static native void readText(File file, TextCallback callback);
-    @JSBody(params={"file","callback"}, script="var reader = new FileReader(); reader.onload = function(){callback(reader.result);}; reader.onerror = function(){callback('');}; reader.readAsDataURL(file);")
-    public static native void readDataUrl(File file, TextCallback callback);
-    @JSBody(params={"source","callback"}, script="var image = new Image(); image.onload = function(){if (image.width <= 0 || image.height <= 0 || image.width * image.height > 16777216) { callback(0, 0, null); return; } var canvas = document.createElement('canvas'); canvas.width = image.width; canvas.height = image.height; var context = canvas.getContext('2d'); context.drawImage(image, 0, 0); callback(image.width, image.height, context.getImageData(0, 0, image.width, image.height).data);}; image.onerror = function(){callback(0, 0, null);}; image.src = source;")
-    public static native void readRaster(String source, RasterCallback callback);
+    @JSBody(params={"file","maxPixels","callback"}, script="var source = URL.createObjectURL(file); var image = new Image(); image.onload = function(){var width = image.naturalWidth || image.width; var height = image.naturalHeight || image.height; URL.revokeObjectURL(source); if (!isFinite(width) || !isFinite(height) || width <= 0 || height <= 0 || Math.floor(width) !== width || Math.floor(height) !== height) { callback(0, 0, null, 0, 0, 'Could not determine the image dimensions.'); return; } if (width > 2147483647 || height > 2147483647 || width > maxPixels / height) { callback(0, 0, null, 0, 0, 'The image exceeds the 100-megapixel limit.'); return; } try { var canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height; var context = canvas.getContext('2d'); context.drawImage(image, 0, 0); var data = context.getImageData(0, 0, width, height).data; callback(width, height, data, width, height, ''); } catch (error) { callback(0, 0, null, 0, 0, 'Could not decode the image within browser memory limits.'); } }; image.onerror = function(){ URL.revokeObjectURL(source); callback(0, 0, null, 0, 0, 'Could not decode the image.'); }; image.src = source;")
+    public static native void readRaster(File file, int maxPixels, RasterCallback callback);
     @JSBody(params={"value"}, script="return encodeURIComponent(value);")
     public static native String encodeUri(String value);
     @JSBody(params={"value"}, script="var blob=new Blob([value],{type:'image/svg+xml'}); return URL.createObjectURL(blob);")
