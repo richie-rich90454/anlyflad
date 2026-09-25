@@ -14,6 +14,7 @@ public final class PipelineConfigTest {
         assertTrue(defaults.isClean());
         assertEquals("default", defaults.getPresetName());
         assertEquals(RasterMode.COLOR, defaults.getRasterMode());
+        assertEquals(VectorMode.CONTOUR, defaults.getVectorMode());
         assertTrue(defaults.getOverrides().isEmpty());
         int[] defaultPalette={0, 0xFFFFFF};
         int[] copiedDefault=defaults.getIntegerArray("quantize", "palette", defaultPalette);
@@ -58,6 +59,18 @@ public final class PipelineConfigTest {
         try {
             RasterMode.parse("unknown");
             fail("Expected invalid raster mode to be rejected");
+        } catch (IllegalArgumentException exception) {
+            assertTrue(exception.getMessage().length()>0);
+        }
+    }
+    @Test
+    public void shouldParseVectorModes() {
+        assertEquals(VectorMode.EXACT, VectorMode.parse(" EXACT "));
+        assertEquals(VectorMode.CONTOUR, VectorMode.parse("region"));
+        assertEquals(VectorMode.CURVE, VectorMode.parse("fitted"));
+        try {
+            VectorMode.parse("unknown");
+            fail("Expected invalid vector mode to be rejected");
         } catch (IllegalArgumentException exception) {
             assertTrue(exception.getMessage().length()>0);
         }
