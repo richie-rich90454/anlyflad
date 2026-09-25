@@ -1,4 +1,5 @@
 package com.vectorium.core.stage;
+import com.vectorium.core.raster.AdaptiveColorQuantizer;
 import com.vectorium.core.svg.SvgCache;
 public final class StandardStageFactories {
     private final SerializeFactory serializeFactory;
@@ -71,7 +72,7 @@ public final class StandardStageFactories {
         private QuantizeFactory() {
         }
         public Stage create() {
-            return new QuantizeStage(StandardStageDescriptors.QUANTIZE, new int[]{0x000000, 0xFFFFFF, 0x00FF00, 0xFF0000});
+            return new QuantizeStage(StandardStageDescriptors.QUANTIZE, AdaptiveColorQuantizer.DEFAULT_MAX_COLORS);
         }
     }
     public static final class ContourFactory implements StageFactory {
