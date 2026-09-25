@@ -4,7 +4,7 @@ import com.vectorium.core.model.StageDescriptor;
 import com.vectorium.core.model.VectorDocument;
 import com.vectorium.core.model.VectorPath;
 import com.vectorium.core.perf.SpatialHash;
-public final class ColorMergeStage implements ConfigurableStage {
+public final class ColorMergeStage implements ConfigurableStage, ColorTransformStage {
     private final StageDescriptor descriptor;
     private final double distance;
     public ColorMergeStage(StageDescriptor descriptor, double distance) {
@@ -100,6 +100,9 @@ public final class ColorMergeStage implements ConfigurableStage {
         return document.withPaths(merged);
     }
     private double colorDistanceSquared(VectorPath first, VectorPath second) {
+        if (first.getFill().getAlpha()!=second.getFill().getAlpha()) {
+            return Double.POSITIVE_INFINITY;
+        }
         int red=first.getFill().getRed()-second.getFill().getRed();
         int green=first.getFill().getGreen()-second.getFill().getGreen();
         int blue=first.getFill().getBlue()-second.getFill().getBlue();
