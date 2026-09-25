@@ -71,6 +71,9 @@ public final class CliImageLoader {
         if (image==null) {
             throw new IOException("Unsupported or corrupt image: "+file.getName());
         }
+        if (image.getWidth()!=width||image.getHeight()!=height) {
+            throw new IOException("Decoded image dimensions do not match the header: "+file.getName());
+        }
         int[] pixels=image.getRGB(0, 0, width, height, null, 0, width);
         return new VectorDocument(file.getName(), new RasterOrigin(file.getName()), Collections.<VectorPath>emptyList(), width, height, pixels);
     }
