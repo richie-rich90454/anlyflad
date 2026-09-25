@@ -3,7 +3,7 @@ import java.util.ArrayList;
 import com.vectorium.core.model.StageDescriptor;
 import com.vectorium.core.model.VectorDocument;
 import com.vectorium.core.model.VectorPath;
-public final class SmoothStage implements ConfigurableStage {
+public final class SmoothStage implements ConfigurableStage, ColorTransformStage {
     private static final double RATIO=0.25;
     private final StageDescriptor descriptor;
     private final int passes;
