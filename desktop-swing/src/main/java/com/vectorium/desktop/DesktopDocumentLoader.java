@@ -5,8 +5,11 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.Locale;
 import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
 import com.vectorium.core.model.RasterOrigin;
 import com.vectorium.core.model.VectorDocument;
 import com.vectorium.core.model.VectorPath;
@@ -30,15 +33,41 @@ public final class DesktopDocumentLoader {
         if (!name.endsWith(".png")&&!name.endsWith(".jpg")&&!name.endsWith(".jpeg")) {
             throw new IOException("Unsupported input format: "+file.getName());
         }
-        BufferedImage image=ImageIO.read(file);
-        if (image==null||image.getWidth()<=0||image.getHeight()<=0) {
-            throw new IOException("Unsupported or corrupt image: "+file.getName());
+        ImageInputStream imageInput=ImageIO.createImageInputStream(file);
+        if (imageInput==null) {
+            throw new IOException("Unable to open image: "+file.getName());
         }
-        long length=(long)image.getWidth()*(long)image.getHeight();
-        if (length>MAX_PIXELS||length>Integer.MAX_VALUE) {
-            throw new IOException("Image dimensions exceed the 64-megapixel limit: "+file.getName());
+        try {
+            Iterator<ImageReader> readers=ImageIO.getImageReaders(imageInput);
+            if (!readers.hasNext()) {
+                throw new IOException("Unsupported or corrupt image: "+file.getName());
+            }
+            ImageReader reader=readers.next();
+            try {
+                reader.setInput(imageInput, true, true);
+                int width=reader.getWidth(0);
+                int height=reader.getHeight(0);
+                if (width<=0||height<=0) {
+                    throw new IOException("Image dimensions must be positive: "+file.getName());
+                }
+                long length=(long)width*(long)height;
+                if (length>MAX_PIXELS||length>Integer.MAX_VALUE) {
+                    throw new IOException("Image dimensions exceed the 64-megapixel limit: "+file.getName());
+                }
+                BufferedImage image=reader.read(0);
+                if (image==null) {
+                    throw new IOException("Unsupported or corrupt image: "+file.getName());
+                }
+                if (image.getWidth()!=width||image.getHeight()!=height) {
+                    throw new IOException("Decoded image dimensions do not match the header: "+file.getName());
+                }
+                int[] pixels=image.getRGB(0, 0, width, height, null, 0, width);
+                return new VectorDocument(file.getName(), new RasterOrigin(file.getName()), Collections.<VectorPath>emptyList(), width, height, pixels);
+            } finally {
+                reader.dispose();
+            }
+        } finally {
+            imageInput.close();
         }
-        int[] pixels=image.getRGB(0, 0, image.getWidth(), image.getHeight(), null, 0, image.getWidth());
-        return new VectorDocument(file.getName(), new RasterOrigin(file.getName()), Collections.<VectorPath>emptyList(), image.getWidth(), image.getHeight(), pixels);
     }
 }
