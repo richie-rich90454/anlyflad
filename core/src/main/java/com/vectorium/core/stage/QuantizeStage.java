@@ -3,7 +3,7 @@ import java.util.Arrays;
 import com.vectorium.core.model.StageDescriptor;
 import com.vectorium.core.model.VectorDocument;
 import com.vectorium.core.raster.PixelQuantizer;
-public final class QuantizeStage implements ConfigurableStage {
+public final class QuantizeStage implements ConfigurableStage, ColorTransformStage {
     private final StageDescriptor descriptor;
     private final int[] palette;
     private final PixelQuantizer quantizer;
