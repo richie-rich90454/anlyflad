@@ -22,7 +22,7 @@ public final class AnlyfladCliTest {
         Files.write(input.toPath(), "<svg width='20' height='10'><path d='M0 0 L10 0 L10 10 Z'/></svg>".getBytes(StandardCharsets.UTF_8));
         ByteArrayOutputStream outputBytes=new ByteArrayOutputStream();
         ByteArrayOutputStream errorBytes=new ByteArrayOutputStream();
-        int exitCode=new AnlyfladCli(new PrintStream(outputBytes), new PrintStream(errorBytes)).execute(input.getAbsolutePath(), "--output", output.getAbsolutePath(), "--preset", "fast", "--stage", "smooth.passes=2", "--no-stage", "layer-sort");
+        int exitCode=new AnlyfladCli(new PrintStream(outputBytes), new PrintStream(errorBytes)).execute(input.getAbsolutePath(), "--output", output.getAbsolutePath(), "--mode", "binary", "--preset", "fast", "--stage", "smooth.passes=2", "--no-stage", "layer-sort");
         String stdout=outputBytes.toString("UTF-8");
         assertEquals(0, exitCode);
         assertTrue(errorBytes.toString("UTF-8").isEmpty());
@@ -37,7 +37,7 @@ public final class AnlyfladCliTest {
         BufferedImage image=new BufferedImage(4, 4, BufferedImage.TYPE_INT_ARGB);
         for (int y=0;y<4;y++) {
             for (int x=0;x<4;x++) {
-                image.setRGB(x, y, x<2?0xFF000000:0xFFFFFFFF);
+                image.setRGB(x, y, x<2?0xFFFF0000:0xFF0000FF);
             }
         }
         File input=new File(temporaryDirectory.toFile(), "input.png");
@@ -48,7 +48,10 @@ public final class AnlyfladCliTest {
         int exitCode=new AnlyfladCli(new PrintStream(outputBytes), new PrintStream(errorBytes)).execute(input.getAbsolutePath(), "-o", output.getAbsolutePath());
         assertEquals(0, exitCode);
         assertTrue(output.isFile());
-        assertTrue(new String(Files.readAllBytes(output.toPath()), StandardCharsets.UTF_8).startsWith("<svg"));
+        String svg=new String(Files.readAllBytes(output.toPath()), StandardCharsets.UTF_8);
+        assertTrue(svg.startsWith("<svg"));
+        assertTrue(svg.contains("#ff0000"));
+        assertTrue(svg.contains("#0000ff"));
     }
     @Test
     public void shouldExposeVersionNoCleanAndRejectInvalidConfiguration() throws Exception {
@@ -68,6 +71,12 @@ public final class AnlyfladCliTest {
         errorBytes.reset();
         assertEquals(1, command.execute(input.getAbsolutePath(), "-o", output.getAbsolutePath(), "--no-stage", "serialize"));
         assertTrue(errorBytes.toString("UTF-8").contains("cannot be disabled"));
+        errorBytes.reset();
+        assertEquals(1, command.execute(input.getAbsolutePath(), "-o", output.getAbsolutePath(), "--no-stage", "vectorize"));
+        assertTrue(errorBytes.toString("UTF-8").contains("cannot be disabled"));
+        errorBytes.reset();
+        assertEquals(1, command.execute(input.getAbsolutePath(), "-o", output.getAbsolutePath(), "--mode", "invalid"));
+        assertTrue(errorBytes.toString("UTF-8").contains("raster mode"));
     }
     @Test
     public void shouldReturnUserErrorsAndHelp() throws Exception {
