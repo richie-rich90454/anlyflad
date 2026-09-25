@@ -23,9 +23,11 @@ public final class VectorCanvas extends JPanel {
     private static final int CHECKER_SIZE=12;
     private static final double MIN_ZOOM=0.1;
     private static final double MAX_ZOOM=16.0;
+    private static final int VECTOR_PREVIEW_PATH_LIMIT=10000;
     private final MouseHandler mouseHandler;
     private VectorDocument document;
     private BufferedImage rasterImage;
+    private BufferedImage vectorPreview;
     private double zoom=1.0;
     private double panX;
     private double panY;
@@ -45,16 +47,54 @@ public final class VectorCanvas extends JPanel {
         addMouseMotionListener(mouseHandler);
     }
     public void setDocument(VectorDocument document) {
+        setDocument(document, document!=null&&document.getOrigin().isRaster()&&document.getPaths().isEmpty());
+    }
+    public void setVectorResult(VectorDocument document) {
+        setVectorResult(document, true);
+    }
+    public void setVectorResult(VectorDocument document, boolean rasterFallback) {
+        setDocument(document, false, rasterFallback);
+    }
+    private void setDocument(VectorDocument document, boolean showRaster) {
+        setDocument(document, showRaster, true);
+    }
+    private void setDocument(VectorDocument document, boolean showRaster, boolean rasterFallback) {
         this.document=document;
         rasterImage=null;
-        if (document!=null&&document.getOrigin().isRaster()&&document.getWidth()>0&&document.getHeight()>0) {
-            rasterImage=new BufferedImage(document.getWidth(), document.getHeight(), BufferedImage.TYPE_INT_ARGB);
-            rasterImage.setRGB(0, 0, document.getWidth(), document.getHeight(), document.getOwnedPixels(), 0, document.getWidth());
+        vectorPreview=null;
+        if (document!=null&&document.getWidth()>0&&document.getHeight()>0) {
+            if (showRaster) {
+                rasterImage=createRasterImage(document);
+            } else if (document.getOrigin().isRaster()&&document.getPaths().size()>0) {
+                if (document.getPaths().size()<=VECTOR_PREVIEW_PATH_LIMIT||!rasterFallback) {
+                    vectorPreview=renderVectorPreview(document);
+                } else {
+                    rasterImage=createRasterImage(document);
+                }
+            }
         }
         if (getWidth()>0&&getHeight()>0) {
             fitToViewport();
         }
         repaint();
+    }
+    private BufferedImage createRasterImage(VectorDocument document) {
+        BufferedImage image=new BufferedImage(document.getWidth(), document.getHeight(), BufferedImage.TYPE_INT_ARGB);
+        image.setRGB(0, 0, document.getWidth(), document.getHeight(), document.getOwnedPixels(), 0, document.getWidth());
+        return image;
+    }
+    private BufferedImage renderVectorPreview(VectorDocument document) {
+        BufferedImage image=new BufferedImage(document.getWidth(), document.getHeight(), BufferedImage.TYPE_INT_ARGB);
+        Graphics2D graphics=image.createGraphics();
+        try {
+            graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
+            for (int index=0;index<document.getPaths().size();index++) {
+                fillPath(graphics, document.getPaths().get(index));
+            }
+        } finally {
+            graphics.dispose();
+        }
+        return image;
     }
     public VectorDocument getDocument() {
         return document;
@@ -143,17 +183,24 @@ public final class VectorCanvas extends JPanel {
     }
     private void drawDocument(Graphics2D graphics) {
         Rectangle2D page=new Rectangle2D.Double(panX, panY, document.getWidth()*zoom, document.getHeight()*zoom);
-        if (rasterImage!=null) {
+        if (document.getOrigin().isRaster()) {
             drawCheckerboard(graphics, page);
         }
         Graphics2D transformed=(Graphics2D)graphics.create();
         try {
             transformed.translate(panX, panY);
             transformed.scale(zoom, zoom);
+            if (document.getOrigin().isRaster()) {
+                transformed.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
+            }
             if (rasterImage!=null) {
                 Object interpolation=zoom>=2.0?RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR:RenderingHints.VALUE_INTERPOLATION_BILINEAR;
                 transformed.setRenderingHint(RenderingHints.KEY_INTERPOLATION, interpolation);
                 transformed.drawImage(rasterImage, 0, 0, null);
+            } else if (vectorPreview!=null) {
+                Object interpolation=zoom>=2.0?RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR:RenderingHints.VALUE_INTERPOLATION_BILINEAR;
+                transformed.setRenderingHint(RenderingHints.KEY_INTERPOLATION, interpolation);
+                transformed.drawImage(vectorPreview, 0, 0, null);
             } else {
                 drawVectorPaths(transformed);
             }
@@ -188,22 +235,35 @@ public final class VectorCanvas extends JPanel {
     private void drawVectorPaths(Graphics2D graphics) {
         for (int index=0;index<document.getPaths().size();index++) {
             VectorPath path=document.getPaths().get(index);
-            double[] coordinates=path.getCoordinates();
-            Path2D.Double shape=new Path2D.Double();
-            shape.moveTo(coordinates[0], coordinates[1]);
-            for (int coordinate=2;coordinate<coordinates.length;coordinate+=2) {
-                shape.lineTo(coordinates[coordinate], coordinates[coordinate+1]);
-            }
-            if (path.isClosed()) {
-                shape.closePath();
-            }
-            graphics.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, (float)path.getOpacity()));
-            graphics.setColor(new Color(path.getFill().getRed(), path.getFill().getGreen(), path.getFill().getBlue(), path.getFill().getAlpha()));
+            Path2D.Double shape=shape(path);
+            setPathStyle(graphics, path);
             graphics.fill(shape);
-            graphics.setColor(new Color(DesktopTheme.TEXT.getRed(), DesktopTheme.TEXT.getGreen(), DesktopTheme.TEXT.getBlue(), 48));
-            graphics.draw(shape);
+            if (!document.getOrigin().isRaster()) {
+                graphics.setColor(new Color(DesktopTheme.TEXT.getRed(), DesktopTheme.TEXT.getGreen(), DesktopTheme.TEXT.getBlue(), 48));
+                graphics.draw(shape);
+            }
         }
         graphics.setComposite(AlphaComposite.SrcOver);
+    }
+    private void fillPath(Graphics2D graphics, VectorPath path) {
+        setPathStyle(graphics, path);
+        graphics.fill(shape(path));
+    }
+    private void setPathStyle(Graphics2D graphics, VectorPath path) {
+        graphics.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, (float)path.getOpacity()));
+        graphics.setColor(new Color(path.getFill().getRed(), path.getFill().getGreen(), path.getFill().getBlue(), path.getFill().getAlpha()));
+    }
+    private static Path2D.Double shape(VectorPath path) {
+        double[] coordinates=path.getCoordinates();
+        Path2D.Double shape=new Path2D.Double();
+        shape.moveTo(coordinates[0], coordinates[1]);
+        for (int coordinate=2;coordinate<coordinates.length;coordinate+=2) {
+            shape.lineTo(coordinates[coordinate], coordinates[coordinate+1]);
+        }
+        if (path.isClosed()) {
+            shape.closePath();
+        }
+        return shape;
     }
     private static double clamp(double value) {
         return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, value));
