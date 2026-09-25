@@ -8,7 +8,7 @@ import com.vectorium.core.model.VectorDocument;
 import com.vectorium.core.svg.SvgParseException;
 import com.vectorium.core.svg.SvgParser;
 public final class CliDocumentLoader {
-    private static final long MAX_FILE_BYTES=64L*1024L*1024L;
+    private static final long MAX_SVG_FILE_BYTES=1024L*1024L*1024L;
     public VectorDocument load(File file) throws IOException, SvgParseException {
         if (file==null) {
             throw new IllegalArgumentException("file must not be null");
@@ -16,11 +16,11 @@ public final class CliDocumentLoader {
         if (!file.isFile()||!file.canRead()) {
             throw new IOException("Input file is not readable: "+file.getPath());
         }
-        if (Files.size(file.toPath())>MAX_FILE_BYTES) {
-            throw new IOException("Input file exceeds 64 MiB: "+file.getName());
-        }
         String name=file.getName().toLowerCase(Locale.ROOT);
         if (name.endsWith(".svg")) {
+            if (Files.size(file.toPath())>MAX_SVG_FILE_BYTES) {
+                throw new IOException("Input file exceeds 1 GiB: "+file.getName());
+            }
             byte[] bytes=Files.readAllBytes(file.toPath());
             String source=new String(bytes, StandardCharsets.UTF_8);
             return new SvgParser().parse(file.getName(), source);
