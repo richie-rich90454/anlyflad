@@ -18,6 +18,7 @@ import com.vectorium.core.model.VectorDocument;
 import com.vectorium.core.stage.BoundedPipelineMemoizer;
 import com.vectorium.core.stage.Pipeline;
 import com.vectorium.core.stage.PipelineConfig;
+import com.vectorium.core.stage.RasterMode;
 import com.vectorium.core.stage.StageException;
 import com.vectorium.core.stage.StageRegistry;
 import com.vectorium.core.svg.SvgCache;
@@ -32,6 +33,8 @@ public final class AnlyfladCli {
     private File output;
     @Option(names="--preset", paramLabel="NAME", description="Preset: default, clean, fast, or accurate.")
     private String preset="default";
+    @Option(names="--mode", paramLabel="MODE", description="Raster mode: color or binary.")
+    private String mode="color";
     @Option(names="--no-clean", description="Disable cleaner stages.")
     private boolean noClean;
     @Option(names="--stage", paramLabel="STAGE.PARAM=VALUE", description="Override a stage parameter. Repeatable.")
@@ -103,6 +106,10 @@ public final class AnlyfladCli {
             stderr.println("Error: "+message(exception));
             return USER_ERROR;
         } catch (StageException exception) {
+            if (exception.isUserError()) {
+                stderr.println("Error: "+message(exception));
+                return USER_ERROR;
+            }
             stderr.println("Internal error: "+message(exception));
             return INTERNAL_ERROR;
         } catch (RuntimeException exception) {
@@ -114,7 +121,7 @@ public final class AnlyfladCli {
         validateOutput();
         PipelineConfig config=createConfiguration();
         VectorDocument document=new CliDocumentLoader().load(input);
-        stdout.println("Anlyflad "+config.getPresetName()+" preset");
+        stdout.println("Anlyflad "+config.getPresetName()+" preset, "+config.getRasterMode().getOptionName()+" raster mode");
         SvgCache cache=new SvgCache();
         CliLogger logger=new CliLogger(stdout);
         StageRegistry registry=new StageRegistry(logger, new BoundedPipelineMemoizer(), cache);
@@ -130,7 +137,7 @@ public final class AnlyfladCli {
     }
     private PipelineConfig createConfiguration() throws UserInputException {
         try {
-            return CliConfiguration.create(!noClean, preset, stageValues, disabledStages);
+            return CliConfiguration.create(!noClean, preset, RasterMode.parse(mode), stageValues, disabledStages);
         } catch (IllegalArgumentException exception) {
             throw new UserInputException(message(exception), exception);
         }
@@ -147,6 +154,7 @@ public final class AnlyfladCli {
         input=null;
         output=null;
         preset="default";
+        mode="color";
         noClean=false;
         stageValues.clear();
         disabledStages.clear();
