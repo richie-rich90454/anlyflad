@@ -9,16 +9,19 @@ import com.vectorium.core.stage.PipelineLogger;
 import com.vectorium.core.stage.RasterMode;
 import com.vectorium.core.stage.StageException;
 import com.vectorium.core.stage.StageRegistry;
+import com.vectorium.core.stage.VectorMode;
 import com.vectorium.core.svg.SvgCache;
 import com.vectorium.core.svg.SvgParseException;
 import com.vectorium.core.svg.SvgParser;
 import java.util.Collections;
 public final class VectoriumWeb {
-    private static final long MAX_FILE_BYTES=16L*1024L*1024L;
-    private static final long MAX_PIXELS=16L*1024L*1024L;
+    private static final long MAX_FILE_BYTES=1024L*1024L*1024L;
+    private static final long MAX_SVG_FILE_BYTES=1024L*1024L*1024L;
+    private static final long MAX_PIXELS=100L*1024L*1024L;
     private WebDom.Document document;
     private WebDom.Element fileInput;
     private WebDom.Element modeInput;
+    private WebDom.Element vectorModeInput;
     private WebDom.Element runButton;
     private WebDom.Element preview;
     private WebDom.Element download;
@@ -33,11 +36,12 @@ public final class VectoriumWeb {
         document=WebDom.document();
         fileInput=require("file-input");
         modeInput=require("mode-input");
+        vectorModeInput=require("vector-mode-input");
         runButton=require("run-button");
         preview=require("preview");
         download=require("download");
         status=require("status");
-        setStatus("Choose a PNG, JPEG, or SVG file.");
+        setStatus("Choose a PNG, JPEG, or SVG file. Image files up to 1 GiB; SVG files up to 1 GiB; raster images up to 100 megapixels.");
         fileInput.addEventListener("change", new WebDom.EventListener() {
             public void handleEvent(WebDom.Event event) {
                 readFile();
@@ -60,34 +64,51 @@ public final class VectoriumWeb {
         }
         WebDom.File file=files.get(0);
         double fileSize=file.getSize();
-        if (!Double.isFinite(fileSize)||fileSize<0.0||fileSize>MAX_FILE_BYTES) {
-            setStatus("The file is larger than 16 MiB.");
+        if (!Double.isFinite(fileSize)||fileSize<0.0) {
+            setStatus("The file size is invalid.");
+            return;
+        }
+        if (fileSize>MAX_FILE_BYTES) {
+            setStatus("The file is larger than 1 GiB.");
             return;
         }
         String name=file.getName();
-        if (name.toLowerCase(java.util.Locale.ROOT).endsWith(".svg")) {
+        String lowerName=name==null?null:name.toLowerCase(java.util.Locale.ROOT);
+        if (lowerName==null) {
+            setStatus("The file name is invalid.");
+            return;
+        }
+        if (lowerName.endsWith(".svg")) {
+            if (fileSize>MAX_SVG_FILE_BYTES) {
+                setStatus("SVG files are limited to 1 GiB in the browser.");
+                return;
+            }
             WebDom.readText(file, new WebDom.TextCallback() {
-                public void accept(String value) {
-                    if (requestId==loadSequence) {
-                        loadSvg(file.getName(), value);
+                public void accept(String value, String error) {
+                    if (requestId!=loadSequence) {
+                        return;
+                    }
+                    if (error!=null&&error.length()>0) {
+                        setStatus(error);
+                    } else if (value==null||value.length()==0) {
+                        setStatus("The SVG file is empty or could not be read.");
+                    } else {
+                        loadSvg(name, value);
                     }
                 }
             });
             return;
         }
-        if (name.toLowerCase(java.util.Locale.ROOT).endsWith(".png")||name.toLowerCase(java.util.Locale.ROOT).endsWith(".jpg")||name.toLowerCase(java.util.Locale.ROOT).endsWith(".jpeg")) {
-            WebDom.readDataUrl(file, new WebDom.TextCallback() {
-                public void accept(String value) {
-                    if (requestId!=loadSequence) {
-                        return;
-                    }
-                    WebDom.readRaster(value, new WebDom.RasterCallback() {
-                        public void accept(int width, int height, WebDom.ImageData data) {
-                            if (requestId==loadSequence) {
-                                loadRaster(file.getName(), width, height, data);
-                            }
+        if (lowerName.endsWith(".png")||lowerName.endsWith(".jpg")||lowerName.endsWith(".jpeg")) {
+            WebDom.readRaster(file, (int)MAX_PIXELS, new WebDom.RasterCallback() {
+                public void accept(int width, int height, WebDom.ImageData data, int sourceWidth, int sourceHeight, String error) {
+                    if (requestId==loadSequence) {
+                        if (error!=null&&error.length()>0) {
+                            setStatus(error);
+                        } else {
+                            loadRaster(name, width, height, data, sourceWidth, sourceHeight);
                         }
-                    });
+                    }
                 }
             });
             return;
@@ -102,14 +123,18 @@ public final class VectoriumWeb {
             setStatus("Could not read SVG: "+exception.getMessage());
         }
     }
-    private void loadRaster(String name, int width, int height, WebDom.ImageData data) {
+    private void loadRaster(String name, int width, int height, WebDom.ImageData data, int sourceWidth, int sourceHeight) {
         if (width<=0||height<=0||data==null) {
             setStatus("Could not decode the image.");
             return;
         }
         long length=(long)width*(long)height;
-        if (length>MAX_PIXELS) {
-            setStatus("The image is too large.");
+        if (length>MAX_PIXELS||length>Integer.MAX_VALUE) {
+            setStatus("The image exceeds the 100-megapixel limit.");
+            return;
+        }
+        if (length>Integer.MAX_VALUE/4L) {
+            setStatus("The image is too large for the browser pixel buffer.");
             return;
         }
         int[] pixels=new int[(int)length];
@@ -121,8 +146,12 @@ public final class VectoriumWeb {
             int alpha=data.get(offset+3);
             pixels[index]=(alpha<<24)|(red<<16)|(green<<8)|blue;
         }
-        current=new VectorDocument(name, new RasterOrigin(name), Collections.<VectorPath>emptyList(), width, height, pixels);
-        setStatus("Image loaded. Ready to vectorize.");
+        current=VectorDocument.fromOwnedPixels(name, new RasterOrigin(name), Collections.<VectorPath>emptyList(), width, height, pixels);
+        if (sourceWidth>0&&sourceHeight>0&&(sourceWidth!=width||sourceHeight!=height)) {
+            setStatus("Image loaded at "+width+"x"+height+" (source "+sourceWidth+"x"+sourceHeight+"). Ready to vectorize.");
+        } else {
+            setStatus("Image loaded. Ready to vectorize.");
+        }
     }
     private void vectorize() {
         if (current==null) {
@@ -133,7 +162,7 @@ public final class VectoriumWeb {
         try {
             SvgCache cache=new SvgCache();
             StageRegistry registry=new StageRegistry(new WebLogger(), new BoundedPipelineMemoizer(), cache);
-            PipelineConfig config=PipelineConfig.defaults().withRasterMode(RasterMode.parse(modeInput.getValue()));
+            PipelineConfig config=PipelineConfig.defaults().withRasterMode(RasterMode.parse(modeInput.getValue())).withVectorMode(VectorMode.parse(vectorModeInput.getValue()));
             Pipeline pipeline=registry.buildPipeline(config);
             VectorDocument result=pipeline.run(current, config);
             String svg=cache.get(result);
