@@ -18,6 +18,12 @@ public final class SvgParserTest {
         assertTrue(!document.getPaths().get(3).isClosed());
     }
     @Test
+    public void shouldPreserveSafeXmlDeclaration() throws Exception {
+        String source="<?xml version='1.0' encoding='UTF-8'?><svg width='10' height='10'><path d='M0 0 L1 1'/></svg>";
+        VectorDocument document=new SvgParser().parse("declaration.svg", source);
+        assertEquals(source, document.getSourceSvg());
+    }
+    @Test
     public void shouldInheritGroupStyleAndTransform() throws Exception {
         VectorDocument document=new SvgParser().parse("group.svg", "<svg width='20' height='20' fill='red' opacity='0.5' transform='translate(1 2)'><g fill='#00ff00' opacity='0.5' transform='scale(2)'><path d='M0 0 L1 0'/></g></svg>");
         VectorPath path=document.getPaths().get(0);
@@ -47,7 +53,7 @@ public final class SvgParserTest {
     }
     @Test
     public void shouldRejectInvalidRootsDimensionsAndValues() {
-        String[] invalid=new String[]{"<html></html>", "<svg width='-1' height='2'/>", "<svg width='NaN' height='2'/>", "<svg><path d='M0 0 LNaN 1'/></svg>"};
+        String[] invalid=new String[]{"<html></html>", "<svg width='-1' height='2'/>", "<svg width='NaN' height='2'/>", "<svg><path d='M0 0 LNaN 1'/></svg>", "<svg><script>alert(1)</script></svg>", "<svg><path href='https://example.com/a' d='M0 0 L1 1'/></svg>", "<svg><path ping='https://example.com/a' d='M0 0 L1 1'/></svg>", "<svg><path onload='alert(1)' d='M0 0 L1 1'/></svg>", "<svg><animateColor attributeName='fill' values='red;blue'/></svg>", "<!DOCTYPE svg><svg/>", "<?xml-stylesheet href='https://example.com/a'?><svg/>", "<svg><style>*{fill:url(https://example.com/a)}</style></svg>"};
         for (int index=0;index<invalid.length;index++) {
             try {
                 new SvgParser().parse("bad.svg", invalid[index]);
