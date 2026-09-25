@@ -8,12 +8,14 @@ import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JPanel;
 import com.vectorium.core.stage.RasterMode;
+import com.vectorium.core.stage.VectorMode;
 public final class DesktopToolbar extends JPanel {
     private static final long serialVersionUID=1L;
     private final JButton openButton;
     private final JButton exportButton;
     private final JComboBox<String> preset;
     private final JComboBox<String> mode;
+    private final JComboBox<String> vectorMode;
     private final JCheckBox clean;
     private boolean exportAllowed;
     private boolean running;
@@ -23,6 +25,7 @@ public final class DesktopToolbar extends JPanel {
         exportButton.setEnabled(false);
         preset=new JComboBox<String>(new String[]{"default", "clean", "fast", "accurate"});
         mode=new JComboBox<String>(new String[]{RasterMode.COLOR.getOptionName(), RasterMode.BINARY.getOptionName()});
+        vectorMode=new JComboBox<String>(new String[]{VectorMode.CONTOUR.getOptionName(), VectorMode.EXACT.getOptionName(), VectorMode.CURVE.getOptionName()});
         clean=new JCheckBox("Clean output", true);
         setLayout(new FlowLayout(FlowLayout.LEFT, 8, 8));
         setBackground(DesktopTheme.SURFACE);
@@ -33,6 +36,8 @@ public final class DesktopToolbar extends JPanel {
         add(preset);
         add(new javax.swing.JLabel("Raster mode"));
         add(mode);
+        add(new javax.swing.JLabel("Vector mode"));
+        add(vectorMode);
         add(clean);
         openButton.setPreferredSize(new Dimension(112, 36));
         exportButton.setPreferredSize(new Dimension(112, 36));
@@ -40,6 +45,7 @@ public final class DesktopToolbar extends JPanel {
         exportButton.getAccessibleContext().setAccessibleName("Export SVG");
         preset.getAccessibleContext().setAccessibleName("Pipeline preset");
         mode.getAccessibleContext().setAccessibleName("Raster mode");
+        vectorMode.getAccessibleContext().setAccessibleName("Vector mode");
         clean.getAccessibleContext().setAccessibleName("Enable clean output");
     }
     public void addOpenListener(ActionListener listener) {
@@ -57,6 +63,9 @@ public final class DesktopToolbar extends JPanel {
     public void addCleanListener(ActionListener listener) {
         clean.addActionListener(listener);
     }
+    public void addVectorModeListener(ActionListener listener) {
+        vectorMode.addActionListener(listener);
+    }
     public void setExportEnabled(boolean enabled) {
         exportAllowed=enabled;
         exportButton.setEnabled(enabled&&!running);
@@ -67,6 +76,7 @@ public final class DesktopToolbar extends JPanel {
         exportButton.setEnabled(!running&&exportAllowed);
         preset.setEnabled(!running);
         mode.setEnabled(!running);
+        vectorMode.setEnabled(!running);
         clean.setEnabled(!running);
     }
     public String getPreset() {
@@ -83,6 +93,15 @@ public final class DesktopToolbar extends JPanel {
             throw new IllegalArgumentException("rasterMode must not be null");
         }
         mode.setSelectedItem(rasterMode.getOptionName());
+    }
+    public VectorMode getVectorMode() {
+        return VectorMode.parse((String)vectorMode.getSelectedItem());
+    }
+    public void setVectorMode(VectorMode vectorMode) {
+        if (vectorMode==null) {
+            throw new IllegalArgumentException("vectorMode must not be null");
+        }
+        this.vectorMode.setSelectedItem(vectorMode.getOptionName());
     }
     public boolean isClean() {
         return clean.isSelected();
