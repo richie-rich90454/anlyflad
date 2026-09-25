@@ -87,7 +87,11 @@ public final class UnionStage implements ConfigurableStage, ColorTransformStage 
         int nextId=0;
         for (int index=0;index<nonRectangles.size();index++) {
             VectorPath path=nonRectangles.get(index);
-            result.add(new VectorPath(PathId.of(nextId), path.getCoordinates(), path.isClosed(), path.getFill(), path.getOpacity()));
+            if (path.isCompound()||path.hasCubicData()) {
+                result.add(path);
+            } else {
+                result.add(new VectorPath(PathId.of(nextId), path.getCoordinates(), path.isClosed(), path.getFill(), path.getOpacity(), path.getFillRule()));
+            }
             nextId++;
         }
         for (int index=0;index<rectangles.size();index++) {
@@ -100,7 +104,7 @@ public final class UnionStage implements ConfigurableStage, ColorTransformStage 
             result.add(new VectorPath(PathId.of(nextId), coordinates, true, rectangle.fill, rectangle.opacity));
             nextId++;
         }
-        return document.withPaths(result);
+        return document.withPathsAndOwnedPixels(result);
     }
     private boolean touches(Rectangle first, Rectangle second) {
         double horizontalGap=gap(first.bounds.getMinX(), first.bounds.getMaxX(), second.bounds.getMinX(), second.bounds.getMaxX());
@@ -117,7 +121,7 @@ public final class UnionStage implements ConfigurableStage, ColorTransformStage 
         return value<0.0?0.0:value;
     }
     private boolean isRectangle(VectorPath path) {
-        if (!path.isClosed()||path.getNodeCount()!=4) {
+        if (path.isCompound()||path.hasCubicData()||!path.isClosed()||path.getNodeCount()!=4) {
             return false;
         }
         double[] coordinates=path.getCoordinates();
