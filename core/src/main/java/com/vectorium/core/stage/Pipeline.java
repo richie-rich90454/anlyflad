@@ -2,11 +2,14 @@ package com.vectorium.core.stage;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 import com.vectorium.core.model.VectorDocument;
 public final class Pipeline {
+    private static final AtomicLong PIPELINE_IDS=new AtomicLong();
     private final List<Stage> stages;
     private final PipelineLogger logger;
     private final PipelineMemoizer memoizer;
+    private final long cacheNamespace;
     public Pipeline(List<Stage> stages, PipelineLogger logger, PipelineMemoizer memoizer) {
         if (stages==null) {
             throw new IllegalArgumentException("stages must not be null");
@@ -28,6 +31,7 @@ public final class Pipeline {
         this.stages=Collections.unmodifiableList(copiedStages);
         this.logger=logger;
         this.memoizer=memoizer;
+        this.cacheNamespace=PIPELINE_IDS.incrementAndGet();
     }
     public VectorDocument run(VectorDocument input, PipelineConfig config) throws StageException {
         if (input==null) {
@@ -36,7 +40,14 @@ public final class Pipeline {
         if (config==null) {
             throw new IllegalArgumentException("config must not be null");
         }
-        long configHash=config.getConfigHash();
+        boolean colorMode=config.getRasterMode()==RasterMode.COLOR;
+        if (!config.isStageEnabled("validate")) {
+            throw StageException.userError("validate cannot be disabled because it is required for safe processing");
+        }
+        if (input.getOrigin().isRaster()&&!config.isStageEnabled("vectorize")) {
+            throw StageException.userError("vectorize cannot be disabled because it produces the vector output");
+        }
+        long configHash=31L*config.getConfigHash()+cacheNamespace;
         VectorDocument cached=memoizer.get(input, configHash);
         if (cached!=null) {
             return cached;
@@ -44,6 +55,10 @@ public final class Pipeline {
         VectorDocument current=input;
         for (int index=0;index<stages.size();index++) {
             Stage configured=stages.get(index);
+            if (colorMode&&configured instanceof ColorTransformStage) {
+                logger.onStage(configured.getName(), StageResult.SKIPPED, 0L);
+                continue;
+            }
             if (configured.getTag()==StageTag.CLEANER&&!config.isClean()) {
                 logger.onStage(configured.getName(), StageResult.SKIPPED, 0L);
                 continue;
