@@ -5,16 +5,23 @@ import com.vectorium.core.model.Color;
 import com.vectorium.core.model.PathId;
 import com.vectorium.core.model.VectorPath;
 public final class RasterVectorizer {
+    public static final int DEFAULT_MAX_PATHS=1000000;
     private static final Color BLACK=new Color(0, 0, 0, 255);
     private RasterVectorizer() {
     }
     public static List<VectorPath> vectorize(RasterFrame frame) {
+        return vectorize(frame, DEFAULT_MAX_PATHS);
+    }
+    public static List<VectorPath> vectorize(RasterFrame frame, int maxPaths) {
         if (frame==null) {
             throw new IllegalArgumentException("frame must not be null");
         }
-        return vectorize(frame.getWidth(), frame.getHeight(), frame.getOwnedPixels());
+        return vectorize(frame.getWidth(), frame.getHeight(), frame.getOwnedPixels(), maxPaths);
     }
     public static List<VectorPath> vectorize(int width, int height, int[] rgba) {
+        return vectorize(width, height, rgba, DEFAULT_MAX_PATHS);
+    }
+    public static List<VectorPath> vectorize(int width, int height, int[] rgba, int maxPaths) {
         int pixelLength=pixelLength(width, height);
         if (rgba==null) {
             throw new IllegalArgumentException("rgba must not be null");
@@ -22,8 +29,11 @@ public final class RasterVectorizer {
         if (rgba.length!=pixelLength) {
             throw new IllegalArgumentException("rgba length must equal width multiplied by height");
         }
-        List<VectorPath> paths=new ArrayList<VectorPath>();
-        int maximumRuns=width/2+width%2;
+        if (maxPaths<=0||maxPaths>DEFAULT_MAX_PATHS) {
+            throw new IllegalArgumentException("maxPaths must be between 1 and "+DEFAULT_MAX_PATHS);
+        }
+        List<VectorPath> paths=new ArrayList<VectorPath>(Math.min(maxPaths, 1024));
+        int maximumRuns=Math.min(width/2+width%2, maxPaths);
         int[] activeRunStarts=new int[maximumRuns];
         int[] activeRunEnds=new int[maximumRuns];
         int[] activeRunTops=new int[maximumRuns];
@@ -34,7 +44,7 @@ public final class RasterVectorizer {
         int[] mergedRunTops=new int[maximumRuns];
         int activeRunCount=0;
         for (int y=0;y<height;y++) {
-            int runCount=collectRuns(rgba, width, y, runStarts, runEnds);
+            int runCount=collectRuns(rgba, width, y, runStarts, runEnds, maximumRuns);
             int activeIndex=0;
             int runIndex=0;
             int mergedRunCount=0;
@@ -53,7 +63,7 @@ public final class RasterVectorizer {
                     mergedRunCount++;
                     runIndex++;
                 } else {
-                    appendRectangle(paths, activeRunTops[activeIndex], activeRunStarts[activeIndex], activeRunEnds[activeIndex]+1, y);
+                    appendRectangle(paths, activeRunTops[activeIndex], activeRunStarts[activeIndex], activeRunEnds[activeIndex]+1, y, maxPaths);
                     activeIndex++;
                 }
             }
@@ -69,11 +79,11 @@ public final class RasterVectorizer {
             activeRunCount=mergedRunCount;
         }
         for (int activeIndex=0;activeIndex<activeRunCount;activeIndex++) {
-            appendRectangle(paths, activeRunTops[activeIndex], activeRunStarts[activeIndex], activeRunEnds[activeIndex]+1, height);
+            appendRectangle(paths, activeRunTops[activeIndex], activeRunStarts[activeIndex], activeRunEnds[activeIndex]+1, height, maxPaths);
         }
         return paths;
     }
-    private static int collectRuns(int[] rgba, int width, int y, int[] runStarts, int[] runEnds) {
+    private static int collectRuns(int[] rgba, int width, int y, int[] runStarts, int[] runEnds, int capacity) {
         int runCount=0;
         int rowOffset=y*width;
         int x=0;
@@ -87,6 +97,9 @@ public final class RasterVectorizer {
             while (x<width&&isForeground(rgba[rowOffset+x])) {
                 x++;
             }
+            if (runCount==capacity) {
+                throw new IllegalArgumentException("binary raster output exceeds the path limit of "+capacity);
+            }
             runStarts[runCount]=start;
             runEnds[runCount]=x-1;
             runCount++;
@@ -94,9 +107,12 @@ public final class RasterVectorizer {
         return runCount;
     }
     private static boolean isForeground(int pixel) {
-        return (pixel&0x00FFFFFF)==0;
+        return (pixel>>>24)!=0&&(pixel&0x00FFFFFF)==0;
     }
-    private static void appendRectangle(List<VectorPath> paths, int top, int left, int right, int bottom) {
+    private static void appendRectangle(List<VectorPath> paths, int top, int left, int right, int bottom, int maxPaths) {
+        if (paths.size()>=maxPaths) {
+            throw new IllegalArgumentException("binary raster output exceeds the path limit of "+maxPaths);
+        }
         double[] coordinates={left, top, right, top, right, bottom, left, bottom};
         paths.add(new VectorPath(PathId.of(paths.size()), coordinates, true, BLACK, 1.0));
     }
