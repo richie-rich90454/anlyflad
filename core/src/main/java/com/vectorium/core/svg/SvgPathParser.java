@@ -8,6 +8,7 @@ import com.vectorium.core.model.VectorPath;
 public final class SvgPathParser {
     private static final int MAX_FLATTEN_STEPS=32;
     private static final int MIN_FLATTEN_STEPS=4;
+    private static final int MAX_POINTS=1000000;
     private static final double ARC_TWO_PI=2.0*Math.PI;
     private static final double ARC_PI_OVER_TWO=Math.PI/2.0;
     private static final double ARC_FOUR_THIRDS=4.0/3.0;
@@ -524,6 +525,9 @@ public final class SvgPathParser {
             this.transform=transform;
         }
         private void add(double x, double y) {
+            if (pointCount>=MAX_POINTS) {
+                throw new IllegalArgumentException("path point count exceeds the supported limit");
+            }
             if (!Double.isFinite(x)||!Double.isFinite(y)) {
                 throw new IllegalArgumentException("path coordinates must be finite");
             }
