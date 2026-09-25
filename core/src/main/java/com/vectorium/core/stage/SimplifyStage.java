@@ -46,6 +46,10 @@ public final class SimplifyStage implements ConfigurableStage, ColorTransformSta
         ArrayList<VectorPath> simplified=new ArrayList<VectorPath>(document.getPaths().size());
         for (int index=0;index<document.getPaths().size();index++) {
             VectorPath path=document.getPaths().get(index);
+            if (path.isCompound()||path.hasCubicData()) {
+                simplified.add(path);
+                continue;
+            }
             int pointCount=path.getNodeCount();
             if (pointCount<=2) {
                 simplified.add(path);
@@ -68,6 +72,6 @@ public final class SimplifyStage implements ConfigurableStage, ColorTransformSta
             }
             simplified.add(path.withGeometry(simplifiedCoordinates, path.isClosed()));
         }
-        return document.withPaths(simplified);
+        return document.withPathsAndOwnedPixels(simplified);
     }
 }
