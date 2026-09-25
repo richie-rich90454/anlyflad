@@ -3,7 +3,7 @@ import java.util.Arrays;
 import com.vectorium.core.model.StageDescriptor;
 import com.vectorium.core.model.VectorDocument;
 import com.vectorium.core.raster.RasterPreprocessor;
-public final class PreprocessStage implements ConfigurableStage {
+public final class PreprocessStage implements ConfigurableStage, ColorTransformStage {
     private final StageDescriptor descriptor;
     private final boolean grayscale;
     private final int brightness;
