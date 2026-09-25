@@ -4,7 +4,7 @@ import com.vectorium.core.geometry.GeometryMath;
 import com.vectorium.core.model.StageDescriptor;
 import com.vectorium.core.model.VectorDocument;
 import com.vectorium.core.model.VectorPath;
-public final class HoleFixStage implements ConfigurableStage {
+public final class HoleFixStage implements ConfigurableStage, ColorTransformStage {
     private final StageDescriptor descriptor;
     private final double maxArea;
     public HoleFixStage(StageDescriptor descriptor, double maxArea) {
