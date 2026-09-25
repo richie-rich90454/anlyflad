@@ -14,6 +14,9 @@ public final class SvgParser {
     private static final int MAX_CONTEXT_DEPTH=128;
     private static final int MAX_ELEMENT_DEPTH=512;
     private static final int MAX_ATTRIBUTES=64;
+    private static final int MAX_PATHS=1000000;
+    private static final int MAX_COORDINATES=4000000;
+    private static final int MAX_SOURCE_BYTES=64*1024*1024;
     private static final int ROOT=1;
     private static final int GROUP=2;
     private static final int OTHER=3;
@@ -26,6 +29,9 @@ public final class SvgParser {
         }
         if (svg==null) {
             throw new SvgParseException("SVG source must not be null");
+        }
+        if (SvgWriter.utf8Length(svg)>MAX_SOURCE_BYTES) {
+            throw new SvgParseException("SVG source exceeds the 64 MiB limit");
         }
         ParseState state=new ParseState(svg);
         scan(state);
@@ -41,6 +47,9 @@ public final class SvgParser {
             int count=reader.read(buffer);
             while (count>=0) {
                 if (count>0) {
+                    if ((long)source.length()+count>MAX_SOURCE_BYTES) {
+                        throw new SvgParseException("SVG source exceeds the 64 MiB limit");
+                    }
                     source.append(buffer, 0, count);
                 }
                 count=reader.read(buffer);
@@ -62,9 +71,11 @@ public final class SvgParser {
                 } else if (startsWith(state, "<![CDATA[")) {
                     skipCdata(state);
                 } else if (startsWith(state, "<!DOCTYPE")) {
-                    skipDoctype(state);
+                    throw error("DOCTYPE declarations are not allowed");
+                } else if (startsWith(state, "<?xml")) {
+                    skipXmlDeclaration(state);
                 } else if (startsWith(state, "<?")) {
-                    skipProcessingInstruction(state);
+                    throw error("processing instructions are not allowed");
                 } else if (startsWith(state, "</")) {
                     scanEndTag(state);
                 } else if (state.position+1<state.source.length()&&isNameStart(state.source.charAt(state.position+1))) {
@@ -99,6 +110,7 @@ public final class SvgParser {
     }
     private void scanStartTag(ParseState state) throws SvgParseException {
         Tag tag=readTag(state);
+        validateSafeTag(tag);
         if (!state.rootSeen) {
             if (!tag.name.equals("svg")) {
                 throw error("expected svg root element");
@@ -465,6 +477,15 @@ public final class SvgParser {
         }
         SvgPathParser pathParser=new SvgPathParser();
         List<VectorPath> parsed=pathParser.parse(path.toString(), transform, fill, opacity);
+        if (state.paths.size()+parsed.size()>MAX_PATHS) {
+            throw error("SVG path count exceeds the supported limit");
+        }
+        for (int index=0;index<parsed.size();index++) {
+            state.coordinateCount+=parsed.get(index).getNodeCount();
+            if (state.coordinateCount>MAX_COORDINATES) {
+                throw error("SVG coordinate count exceeds the supported limit");
+            }
+        }
         state.paths.addAll(parsed);
     }
     private double requiredNumber(Tag tag, String name) throws SvgParseException {
@@ -520,7 +541,7 @@ public final class SvgParser {
             throw error("SVG dimensions are too large");
         }
         try {
-            return new VectorDocument(sourceName, new SvgOrigin(sourceName), paths, pixelWidth, pixelHeight, new int[(int)pixelLength]);
+            return new VectorDocument(sourceName, new SvgOrigin(sourceName), paths, pixelWidth, pixelHeight, new int[(int)pixelLength], state.source);
         } catch (IllegalArgumentException exception) {
             throw new SvgParseException("unable to create SVG document: "+exception.getMessage(), exception);
         }
@@ -637,6 +658,73 @@ public final class SvgParser {
             tag.add(attributeName, attributeValue);
         }
     }
+    private void skipXmlDeclaration(ParseState state) throws SvgParseException {
+        int end=state.source.indexOf("?>", state.position+2);
+        if (end<0) {
+            throw error("unterminated XML declaration");
+        }
+        String declaration=state.source.substring(state.position, end+2);
+        if (declaration.length()>5&&declaration.charAt(5)!='?'&&!isWhitespace(declaration.charAt(5))) {
+            throw error("invalid XML declaration");
+        }
+        String normalized=declaration.toLowerCase(Locale.ENGLISH);
+        if (normalized.contains("javascript:")||normalized.contains("url(")||normalized.contains("stylesheet")||normalized.contains("<!doctype")) {
+            throw error("XML declaration contains an unsafe construct");
+        }
+        state.position=end+2;
+    }
+    private void validateSafeTag(Tag tag) throws SvgParseException {
+        String element=tag.name.toLowerCase(Locale.ENGLISH);
+        if (!isAllowedElement(element)) {
+            throw error("SVG element is not allowed: "+tag.name);
+        }
+        for (int index=0;index<tag.count;index++) {
+            String attribute=tag.names[index].toLowerCase(Locale.ENGLISH);
+            String value=tag.values[index].trim();
+            if (attribute.startsWith("on")||attribute.equals("xml:base")) {
+                throw error("SVG attribute is not allowed: "+tag.names[index]);
+            }
+            if ((attribute.equals("href")||attribute.endsWith(":href")||attribute.equals("src")||attribute.equals("action")||attribute.equals("formaction"))&&!isLocalReference(value)) {
+                throw error("SVG external references are not allowed: "+tag.names[index]);
+            }
+            if ((!attribute.startsWith("xmlns")&&containsExternalUrl(value))||containsUnsafeReference(value)||attribute.equals("style")&&containsUnsafeStyle(value)) {
+                throw error("SVG contains an unsafe reference");
+            }
+        }
+    }
+    private static boolean isLocalReference(String value) {
+        return value.length()==0||value.startsWith("#");
+    }
+    private static boolean containsExternalUrl(String value) {
+        String normalized=value.toLowerCase(Locale.ENGLISH);
+        return normalized.contains("://")||normalized.startsWith("//");
+    }
+    private static boolean containsUnsafeReference(String value) {
+        String normalized=value.toLowerCase(Locale.ENGLISH);
+        if (normalized.indexOf('\\')>=0||normalized.contains("javascript:")||normalized.contains("expression(")||normalized.contains("data:text/html")) {
+            return true;
+        }
+        int start=normalized.indexOf("url(");
+        while (start>=0) {
+            int end=normalized.indexOf(')', start+4);
+            if (end<0) {
+                return true;
+            }
+            String reference=normalized.substring(start+4, end).trim();
+            if (reference.length()==0||reference.charAt(0)!='#') {
+                return true;
+            }
+            start=normalized.indexOf("url(", end+1);
+        }
+        return false;
+    }
+    private static boolean containsUnsafeStyle(String value) {
+        String normalized=value.toLowerCase(Locale.ENGLISH);
+        return normalized.indexOf('\\')>=0||normalized.contains("@import")||normalized.contains("behavior:")||normalized.contains("-moz-binding");
+    }
+    private static boolean isAllowedElement(String name) {
+        return name.equals("svg")||name.equals("g")||name.equals("path")||name.equals("rect")||name.equals("circle")||name.equals("ellipse")||name.equals("line")||name.equals("polygon")||name.equals("polyline")||name.equals("text")||name.equals("tspan")||name.equals("a")||name.equals("use")||name.equals("switch")||name.equals("defs")||name.equals("metadata")||name.equals("title")||name.equals("desc")||name.equals("symbol")||name.equals("clippath")||name.equals("mask")||name.equals("pattern")||name.equals("marker")||name.equals("lineargradient")||name.equals("radialgradient")||name.equals("stop")||name.equals("filter")||name.equals("feblend")||name.equals("fecolormatrix")||name.equals("fecomponenttransfer")||name.equals("fecomposite")||name.equals("feconvolvematrix")||name.equals("fediffuselighting")||name.equals("fedisplacementmap")||name.equals("fedistantlight")||name.equals("fedropshadow")||name.equals("feflood")||name.equals("fefunca")||name.equals("fefuncb")||name.equals("fefuncg")||name.equals("fefuncr")||name.equals("fegaussianblur")||name.equals("femerge")||name.equals("femergenode")||name.equals("femorphology")||name.equals("feoffset")||name.equals("fepointlight")||name.equals("fespecularlighting")||name.equals("fespotlight")||name.equals("fetile")||name.equals("feturbulence");
+    }
     private void skipComment(ParseState state) throws SvgParseException {
         int end=state.source.indexOf("-->", state.position+4);
         if (end<0) {
@@ -650,39 +738,6 @@ public final class SvgParser {
             throw error("unterminated CDATA section");
         }
         state.position=end+3;
-    }
-    private void skipProcessingInstruction(ParseState state) throws SvgParseException {
-        int end=state.source.indexOf("?>", state.position+2);
-        if (end<0) {
-            throw error("unterminated processing instruction");
-        }
-        state.position=end+2;
-    }
-    private void skipDoctype(ParseState state) throws SvgParseException {
-        int index=state.position+9;
-        int subset=0;
-        char quote=0;
-        while (index<state.source.length()) {
-            char value=state.source.charAt(index);
-            if (quote!=0) {
-                if (value==quote) {
-                    quote=0;
-                }
-            } else if (value=='\''||value=='"') {
-                quote=value;
-            } else if (value=='[') {
-                subset++;
-            } else if (value==']') {
-                if (subset>0) {
-                    subset--;
-                }
-            } else if (value=='>'&&subset==0) {
-                state.position=index+1;
-                return;
-            }
-            index++;
-        }
-        throw error("unterminated doctype");
     }
     private String decodeEntities(String value) throws SvgParseException {
         int ampersand=value.indexOf('&');
@@ -1113,6 +1168,7 @@ public final class SvgParser {
         private int elementDepth;
         private int contextDepth;
         private int skipDepth;
+        private int coordinateCount;
         private boolean rootSeen;
         private boolean rootClosed;
         private double width;
