@@ -40,7 +40,11 @@ public final class SerializeStage implements ConfigurableStage {
         if (document==null) {
             throw new StageException("document must not be null");
         }
-        cache.get(document);
-        return document;
+        try {
+            cache.get(document);
+            return document;
+        } catch (IllegalArgumentException exception) {
+            throw StageException.userError(exception.getMessage(), exception);
+        }
     }
 }
