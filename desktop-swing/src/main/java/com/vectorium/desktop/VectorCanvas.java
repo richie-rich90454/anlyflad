@@ -14,6 +14,7 @@ import java.awt.event.MouseWheelListener;
 import java.awt.geom.Path2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
+import java.util.List;
 import javax.swing.JPanel;
 import com.vectorium.core.model.VectorDocument;
 import com.vectorium.core.model.VectorPath;
@@ -23,7 +24,6 @@ public final class VectorCanvas extends JPanel {
     private static final int CHECKER_SIZE=12;
     private static final double MIN_ZOOM=0.1;
     private static final double MAX_ZOOM=16.0;
-    private static final int VECTOR_PREVIEW_PATH_LIMIT=10000;
     private final MouseHandler mouseHandler;
     private VectorDocument document;
     private BufferedImage rasterImage;
@@ -66,11 +66,7 @@ public final class VectorCanvas extends JPanel {
             if (showRaster) {
                 rasterImage=createRasterImage(document);
             } else if (document.getOrigin().isRaster()&&document.getPaths().size()>0) {
-                if (document.getPaths().size()<=VECTOR_PREVIEW_PATH_LIMIT||!rasterFallback) {
-                    vectorPreview=renderVectorPreview(document);
-                } else {
-                    rasterImage=createRasterImage(document);
-                }
+                vectorPreview=renderVectorPreview(document);
             }
         }
         if (getWidth()>0&&getHeight()>0) {
@@ -87,7 +83,7 @@ public final class VectorCanvas extends JPanel {
         BufferedImage image=new BufferedImage(document.getWidth(), document.getHeight(), BufferedImage.TYPE_INT_ARGB);
         Graphics2D graphics=image.createGraphics();
         try {
-            graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
+            graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, hasCubicData(document)?RenderingHints.VALUE_ANTIALIAS_ON:RenderingHints.VALUE_ANTIALIAS_OFF);
             for (int index=0;index<document.getPaths().size();index++) {
                 fillPath(graphics, document.getPaths().get(index));
             }
@@ -254,16 +250,37 @@ public final class VectorCanvas extends JPanel {
         graphics.setColor(new Color(path.getFill().getRed(), path.getFill().getGreen(), path.getFill().getBlue(), path.getFill().getAlpha()));
     }
     private static Path2D.Double shape(VectorPath path) {
-        double[] coordinates=path.getCoordinates();
+        List<double[]> rings=path.getRings();
+        double[][] cubicRings=path.getCubicRingCoordinates();
         Path2D.Double shape=new Path2D.Double();
-        shape.moveTo(coordinates[0], coordinates[1]);
-        for (int coordinate=2;coordinate<coordinates.length;coordinate+=2) {
-            shape.lineTo(coordinates[coordinate], coordinates[coordinate+1]);
-        }
-        if (path.isClosed()) {
-            shape.closePath();
+        shape.setWindingRule(path.getFillRule().isEvenOdd()?Path2D.WIND_EVEN_ODD:Path2D.WIND_NON_ZERO);
+        for (int ringIndex=0;ringIndex<rings.size();ringIndex++) {
+            double[] cubic=cubicRings.length>ringIndex?cubicRings[ringIndex]:null;
+            if (cubic!=null) {
+                shape.moveTo(cubic[0], cubic[1]);
+                for (int offset=0;offset<cubic.length;offset+=8) {
+                    shape.curveTo(cubic[offset+2], cubic[offset+3], cubic[offset+4], cubic[offset+5], cubic[offset+6], cubic[offset+7]);
+                }
+            } else {
+                double[] coordinates=rings.get(ringIndex);
+                shape.moveTo(coordinates[0], coordinates[1]);
+                for (int coordinate=2;coordinate<coordinates.length;coordinate+=2) {
+                    shape.lineTo(coordinates[coordinate], coordinates[coordinate+1]);
+                }
+            }
+            if (path.isClosed()) {
+                shape.closePath();
+            }
         }
         return shape;
+    }
+    private static boolean hasCubicData(VectorDocument document) {
+        for (int index=0;index<document.getPaths().size();index++) {
+            if (document.getPaths().get(index).hasCubicData()) {
+                return true;
+            }
+        }
+        return false;
     }
     private static double clamp(double value) {
         return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, value));
