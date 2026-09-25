@@ -1,9 +1,11 @@
 package com.vectorium.desktop;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
+import java.util.Arrays;
 import java.util.Collections;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -54,6 +56,33 @@ public final class VectorCanvasTest {
         assertTrue(countPixels(image, 0xFF0C2238)>0);
     }
     @Test
+    public void shouldRenderCompoundPathsUsingTheExplicitWindingRule() {
+        int fill=0xFF3366CC;
+        VectorPath evenOdd=compoundPath(fill, com.vectorium.core.model.VectorPath.FillRule.EVEN_ODD);
+        BufferedImage evenOddImage=render(evenOdd);
+        assertEquals(fill, evenOddImage.getRGB(32, 32));
+        assertNotEquals(fill, evenOddImage.getRGB(60, 60));
+        VectorPath nonzero=compoundPath(fill, com.vectorium.core.model.VectorPath.FillRule.NONZERO);
+        BufferedImage nonzeroImage=render(nonzero);
+        assertEquals(fill, nonzeroImage.getRGB(60, 60));
+    }
+    @Test
+    public void shouldRenderCubicSubpathsWithJava2D() {
+        int fill=0xFF3366CC;
+        double[] fallback={1.0,5.0,5.0,1.0,9.0,5.0,5.0,9.0};
+        double[] cubic={
+            1.0,5.0,1.0,2.238095,2.238095,1.0,5.0,1.0,
+            5.0,1.0,7.761905,1.0,9.0,2.238095,9.0,5.0,
+            9.0,5.0,9.0,7.761905,7.761905,9.0,5.0,9.0,
+            5.0,9.0,2.238095,9.0,1.0,7.761905,1.0,5.0
+        };
+        VectorPath path=new VectorPath(PathId.of(0),Arrays.asList(fallback),new double[][]{cubic},new com.vectorium.core.model.Color(51,102,204,255),1.0,VectorPath.FillRule.EVEN_ODD);
+        BufferedImage image=render(path);
+        assertEquals(fill,image.getRGB(60,60));
+        assertNotEquals(fill,image.getRGB(32,32));
+    }
+
+    @Test
     public void shouldFitAndClampZoom() {
         VectorCanvas canvas=new VectorCanvas();
         canvas.setSize(320, 240);
@@ -71,6 +100,18 @@ public final class VectorCanvasTest {
         } catch (IllegalArgumentException exception) {
             assertNotNull(exception.getMessage());
         }
+    }
+    private static VectorPath compoundPath(int fill, com.vectorium.core.model.VectorPath.FillRule fillRule) {
+        return new VectorPath(PathId.of(0), Arrays.asList(
+            new double[]{0.0, 0.0, 10.0, 0.0, 10.0, 10.0, 0.0, 10.0},
+            new double[]{2.0, 2.0, 8.0, 2.0, 8.0, 8.0, 2.0, 8.0}), new com.vectorium.core.model.Color((fill>>>16)&0xFF, (fill>>>8)&0xFF, fill&0xFF, 255), 1.0, fillRule);
+    }
+    private static BufferedImage render(VectorPath path) {
+        VectorCanvas canvas=new VectorCanvas();
+        canvas.setSize(120, 120);
+        VectorDocument document=new VectorDocument("compound.svg", new SvgOrigin("compound.svg"), Collections.singletonList(path), 10, 10, new int[100]);
+        canvas.setDocument(document);
+        return paint(canvas, 120, 120);
     }
     private static BufferedImage paint(VectorCanvas canvas, int width, int height) {
         BufferedImage image=new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
