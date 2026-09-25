@@ -4,6 +4,7 @@ import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -55,8 +56,28 @@ public final class RasterModePipelineTest {
         VectorDocument colorOutput=pipeline.run(input, color);
         VectorDocument binaryOutput=pipeline.run(input, binary);
         assertTrue(colorOutput!=binaryOutput);
-        assertEquals(2, binaryOutput.getPaths().size());
+        assertEquals(1, binaryOutput.getPaths().size());
+        assertEquals(2, binaryOutput.getPaths().get(0).getRingCount());
         assertEquals(0xFF000000, binaryOutput.getPaths().get(0).getFill().toArgb());
+    }
+    @Test
+    public void shouldUseGlobalVectorModeUnlessStageOverridesIt() throws Exception {
+        int red=0xFFFF0000;
+        int[] pixels={red, 0, red};
+        VectorDocument input=new VectorDocument("raster.png", new RasterOrigin("raster.png"), Collections.<VectorPath>emptyList(), 3, 1, pixels);
+        VectorDocument exact=buildAndRun(input, PipelineConfig.defaults().withVectorMode(VectorMode.EXACT));
+        VectorDocument contour=buildAndRun(input, PipelineConfig.defaults().withVectorMode(VectorMode.CONTOUR));
+        VectorDocument curve=buildAndRun(input, PipelineConfig.defaults().withVectorMode(VectorMode.CURVE));
+        assertTrue(exact.getPaths().size()>1);
+        for (VectorPath path:exact.getPaths()) {
+            assertFalse(path.hasCubicData());
+            double[] coordinates=path.getCoordinates();
+            for (int coordinate=0;coordinate<coordinates.length;coordinate++) {
+                assertEquals(Math.rint(coordinates[coordinate]),coordinates[coordinate],0.0);
+            }
+        }
+        assertEquals(1, contour.getPaths().size());
+        assertTrue(curve.getPaths().get(0).hasCubicData());
     }
     @Test
     public void shouldPassThroughSvgSourceInColorMode() throws Exception {
@@ -92,6 +113,10 @@ public final class RasterModePipelineTest {
         } catch (StageException exception) {
             assertTrue(exception.getMessage().contains("vectorize"));
         }
+    }
+    private VectorDocument buildAndRun(VectorDocument input, PipelineConfig config) throws Exception {
+        Pipeline pipeline=new StageRegistry(new SilentPipelineLogger(), new BoundedPipelineMemoizer(), new SvgCache()).buildPipeline(config);
+        return pipeline.run(input, config);
     }
     private static final class RecordingLogger implements PipelineLogger {
         private final List<String> names=new ArrayList<String>();
