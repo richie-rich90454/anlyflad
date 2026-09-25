@@ -46,12 +46,12 @@ public final class HoleFixStage implements ConfigurableStage, ColorTransformStag
         ArrayList<VectorPath> fixed=new ArrayList<VectorPath>(document.getPaths().size());
         for (int index=0;index<document.getPaths().size();index++) {
             VectorPath path=document.getPaths().get(index);
-            if (path.isClosed()&&path.getArea()<=maxArea&&isContained(path, document, index)) {
+            if (!path.isCompound()&&!path.hasCubicData()&&path.isClosed()&&path.getArea()<=maxArea&&isContained(path, document, index)) {
                 continue;
             }
             fixed.add(path);
         }
-        return document.withPaths(fixed);
+        return document.withPathsAndOwnedPixels(fixed);
     }
     private boolean isContained(VectorPath path, VectorDocument document, int pathIndex) {
         double[] coordinates=path.getCoordinates();
