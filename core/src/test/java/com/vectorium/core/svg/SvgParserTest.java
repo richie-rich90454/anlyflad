@@ -63,4 +63,49 @@ public final class SvgParserTest {
             }
         }
     }
+    @Test
+    public void shouldPreserveFillRuleAndCompoundSubpaths() throws Exception {
+        String source="<svg width='20' height='20'><path fill-rule='evenodd' d='M0 0 L10 0 L10 10 Z M2 2 L8 2 L8 8 Z'/><path fill-rule='nonzero' style='fill-rule: evenodd' d='M0 0 L1 0 L1 1 Z'/></svg>";
+        VectorDocument document=new SvgParser().parse("compound.svg", source);
+        assertEquals(2, document.getPaths().size());
+        VectorPath compound=document.getPaths().get(0);
+        assertTrue(compound.isCompound());
+        assertEquals(2, compound.getRingCount());
+        assertEquals(VectorPath.FillRule.EVEN_ODD, compound.getFillRule());
+        assertEquals(0.0, compound.getRing(0)[0], 0.0);
+        assertEquals(2.0, compound.getRing(1)[0], 0.0);
+        VectorPath styled=document.getPaths().get(1);
+        assertEquals(VectorPath.FillRule.EVEN_ODD, styled.getFillRule());
+    }
+    @Test
+    public void shouldApplyTransformsToCubicControlsAndKeepSvgClosuresContinuous() throws Exception {
+        VectorDocument document=new SvgParser().parse("curve.svg", "<svg width='20' height='20'><path transform='translate(10 20)' d='M0 0 C1 2 3 4 5 6 Z'/></svg>");
+        VectorPath path=document.getPaths().get(0);
+        assertTrue(path.hasCubicData());
+        assertEquals(2, path.getCubicSegmentCount());
+        double[] cubic=path.getCubicRing(0);
+        assertEquals(11.0, cubic[2], 0.0);
+        assertEquals(22.0, cubic[3], 0.0);
+        assertEquals(13.0, cubic[4], 0.0);
+        assertEquals(24.0, cubic[5], 0.0);
+        assertEquals(15.0, cubic[6], 0.0);
+        assertEquals(26.0, cubic[7], 0.0);
+        double[] fallback=path.getCoordinates();
+        assertEquals(cubic[0], fallback[0], 0.0);
+        assertEquals(cubic[1], fallback[1], 0.0);
+        assertEquals(cubic[cubic.length-2], fallback[fallback.length-2], 0.0);
+        assertEquals(cubic[cubic.length-1], fallback[fallback.length-1], 0.0);
+    }
+    @Test
+    public void shouldRejectMalformedCubicGeometry() {
+        String[] invalid=new String[]{"<svg><path d='M0 0 C1 1 2 2 3'/></svg>", "<svg><path fill-rule='invalid' d='M0 0 L1 0 L1 1 Z'/></svg>"};
+        for (int index=0;index<invalid.length;index++) {
+            try {
+                new SvgParser().parse("bad.svg", invalid[index]);
+                fail("Expected malformed SVG geometry to be rejected");
+            } catch (SvgParseException exception) {
+                assertTrue(exception.getMessage().length()>0);
+            }
+        }
+    }
 }
