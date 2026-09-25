@@ -13,6 +13,7 @@ public final class PipelineConfigTest {
         PipelineConfig defaults=PipelineConfig.defaults();
         assertTrue(defaults.isClean());
         assertEquals("default", defaults.getPresetName());
+        assertEquals(RasterMode.COLOR, defaults.getRasterMode());
         assertTrue(defaults.getOverrides().isEmpty());
         int[] defaultPalette={0, 0xFFFFFF};
         int[] copiedDefault=defaults.getIntegerArray("quantize", "palette", defaultPalette);
@@ -47,7 +48,19 @@ public final class PipelineConfigTest {
         assertEquals(first.hashCode(), second.hashCode());
         assertEquals(first.getConfigHash(), second.getConfigHash());
         assertNotEquals(first, second.withStageValue("simplify", "tolerance", "3"));
+        assertNotEquals(first, second.withRasterMode(RasterMode.BINARY));
         assertTrue(first.toString().contains("simplify.tolerance=2"));
+    }
+    @Test
+    public void shouldParseRasterModes() {
+        assertEquals(RasterMode.COLOR, RasterMode.parse(" COLOR "));
+        assertEquals(RasterMode.BINARY, RasterMode.parse("monochrome"));
+        try {
+            RasterMode.parse("unknown");
+            fail("Expected invalid raster mode to be rejected");
+        } catch (IllegalArgumentException exception) {
+            assertTrue(exception.getMessage().length()>0);
+        }
     }
     @Test
     public void shouldRejectInvalidOverridesAndValues() {
