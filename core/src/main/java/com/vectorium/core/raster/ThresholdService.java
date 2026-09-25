@@ -13,6 +13,10 @@ public final class ThresholdService {
         }
         for (int index=0;index<rgba.length;index++) {
             int pixel=rgba[index];
+            if ((pixel>>>24)==0) {
+                rgba[index]=WHITE;
+                continue;
+            }
             int luminance=luminance((pixel>>>16)&0xFF, (pixel>>>8)&0xFF, pixel&0xFF);
             if (luminance<threshold) {
                 rgba[index]=BLACK;
