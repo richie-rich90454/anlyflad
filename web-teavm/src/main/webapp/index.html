@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Anlyflad Web</title>
 <style>
-:root{font-family:system-ui,sans-serif;color:#25231f;background:#f3f0e8}body{margin:0;padding:24px}main{max-width:1100px;margin:auto}h1{margin:0 0 8px;font-size:28px}p{color:#6f6a61}.toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:16px;background:#fffcf6;border:1px solid #b8b1a4;border-radius:12px;margin:20px 0}button,.download{border:0;border-radius:8px;padding:12px 16px;font:inherit;font-weight:700;cursor:pointer;background:#d65a31;color:#fff;text-decoration:none}button.secondary,.download{background:#25231f}.preview{min-height:420px;display:grid;place-items:center;background:#d8d4ca;border:1px solid #b8b1a4;border-radius:12px;padding:16px}.preview img{max-width:100%;max-height:680px;background:#fff}.status{margin-top:12px;color:#397a4b;font-weight:600}input[type=file]{max-width:100%}
+:root{font-family:system-ui,sans-serif;color:#25231f;background:#f3f0e8}body{margin:0;padding:24px}main{max-width:1100px;margin:auto}h1{margin:0 0 8px;font-size:28px}p{color:#6f6a61}.toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:16px;background:#fffcf6;border:1px solid #b8b1a4;border-radius:12px;margin:20px 0}button,.download{border:0;border-radius:8px;padding:12px 16px;font:inherit;font-weight:700;cursor:pointer;background:#d65a31;color:#fff;text-decoration:none}button.secondary,.download{background:#25231f}.preview{min-height:420px;display:grid;place-items:center;background:#d8d4ca;border:1px solid #b8b1a4;border-radius:12px;padding:16px}.preview img{max-width:100%;max-height:680px;background:#fff}.status{margin-top:12px;color:#397a4b;font-weight:600}input[type=file]{max-width:100%}select{border:1px solid #b8b1a4;border-radius:8px;padding:10px;background:#fffcf6;font:inherit}
 </style>
 </head>
 <body>
@@ -13,9 +13,11 @@
 <h1>Anlyflad</h1>
 <p>Raster and SVG vectorization in your browser.</p>
 <div class="toolbar">
-<label for="file-input">Input file</label>
-<input id="file-input" type="file" accept=".png,.jpg,.jpeg,.svg">
-<button id="run-button" type="button">Vectorize</button>
+    <label for="file-input">Input file</label>
+    <input id="file-input" type="file" accept=".png,.jpg,.jpeg,.svg">
+    <label for="mode-input">Raster mode</label>
+    <select id="mode-input"><option value="color">Color</option><option value="binary">Binary</option></select>
+    <button id="run-button" type="button">Vectorize</button>
 <a id="download" class="download" href="#" download="anlyflad.svg">Download SVG</a>
 </div>
 <div class="preview"><img id="preview" alt="Vectorized preview"></div>
