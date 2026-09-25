@@ -3,6 +3,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -35,7 +36,7 @@ public final class RasterModePipelineTest {
         assertEquals("preprocess", logger.name(1));
         assertEquals(StageResult.SKIPPED, logger.result(1));
         assertEquals("quantize", logger.name(2));
-        assertEquals(StageResult.SKIPPED, logger.result(2));
+        assertEquals(StageResult.APPLIED, logger.result(2));
         assertEquals("contour", logger.name(3));
         assertEquals(StageResult.SKIPPED, logger.result(3));
         assertEquals("vectorize", logger.name(4));
@@ -78,6 +79,19 @@ public final class RasterModePipelineTest {
         }
         assertEquals(1, contour.getPaths().size());
         assertTrue(curve.getPaths().get(0).hasCubicData());
+    }
+    @Test
+    public void shouldBoundAdaptiveColorsAndKeepExactModeFaithful() throws Exception {
+        int[] pixels={0xFFFF0000, 0xFF00FF00, 0xFF0000FF};
+        VectorDocument input=new VectorDocument("raster.png", new RasterOrigin("raster.png"), Collections.<VectorPath>emptyList(), 3, 1, pixels);
+        PipelineConfig bounded=PipelineConfig.defaults().withStageValue("quantize", "maxColors", "2");
+        VectorDocument contour=buildAndRun(input,bounded.withVectorMode(VectorMode.CONTOUR));
+        VectorDocument curve=buildAndRun(input,bounded.withVectorMode(VectorMode.CURVE));
+        VectorDocument exact=buildAndRun(input,bounded.withVectorMode(VectorMode.EXACT));
+        assertTrue(contour.getPaths().size()<=2);
+        assertTrue(curve.getPaths().size()<=2);
+        assertEquals(3, exact.getPaths().size());
+        assertArrayEquals(pixels, exact.getOwnedPixels());
     }
     @Test
     public void shouldPassThroughSvgSourceInColorMode() throws Exception {
