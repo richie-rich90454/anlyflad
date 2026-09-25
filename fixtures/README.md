@@ -13,4 +13,4 @@ java -jar cli/target/anlyflad-cli.jar fixtures/shape-suite.svg --output target/f
 java -jar cli/target/anlyflad-cli.jar fixtures/cleaner-suite.svg --output target/fixtures/cleaner-suite.svg
 java -jar cli/target/anlyflad-cli.jar fixtures/checkerboard.png --output target/fixtures/checkerboard.svg
 ```
-The SVG fixtures exercise the focused SVG subset supported by the parser. Strokes and unsupported SVG elements may be ignored or reduced to fill paths; the fixtures intentionally avoid relying on a lossless round trip.
+The default color mode preserves allowlisted, reference-safe SVG source during export. Use `--mode binary` to run the focused SVG subset through the monochrome cleaner pipeline; unsupported SVG elements may be rejected or reduced to fill paths.
