@@ -46,10 +46,10 @@ public final class SpeckFilterStage implements ConfigurableStage, ColorTransform
         List<VectorPath> filtered=new ArrayList<VectorPath>(document.getPaths().size());
         for (int index=0;index<document.getPaths().size();index++) {
             VectorPath path=document.getPaths().get(index);
-            if (path.getArea()>=minArea) {
+            if (path.isCompound()||path.hasCubicData()||path.getArea()>=minArea) {
                 filtered.add(path);
             }
         }
-        return document.withPaths(filtered);
+        return document.withPathsAndOwnedPixels(filtered);
     }
 }
