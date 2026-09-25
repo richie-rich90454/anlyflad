@@ -15,10 +15,10 @@ public final class VectorizeStage implements ConfigurableStage {
     private final int maxVertices;
     private final double curveTolerance;
     public VectorizeStage(StageDescriptor descriptor) {
-        this(descriptor, RasterMode.COLOR, VectorMode.CONTOUR, ColorRasterVectorizer.DEFAULT_MAX_PATHS, ColorContourVectorizer.DEFAULT_MAX_VERTICES, ColorCurveVectorizer.DEFAULT_TOLERANCE);
+        this(descriptor, RasterMode.COLOR, VectorMode.CURVE, ColorRasterVectorizer.DEFAULT_MAX_PATHS, ColorContourVectorizer.DEFAULT_MAX_VERTICES, ColorCurveVectorizer.DEFAULT_TOLERANCE);
     }
     public VectorizeStage(StageDescriptor descriptor, RasterMode rasterMode, int maxPaths) {
-        this(descriptor, rasterMode, VectorMode.CONTOUR, maxPaths, ColorContourVectorizer.DEFAULT_MAX_VERTICES, ColorCurveVectorizer.DEFAULT_TOLERANCE);
+        this(descriptor, rasterMode, VectorMode.CURVE, maxPaths, ColorContourVectorizer.DEFAULT_MAX_VERTICES, ColorCurveVectorizer.DEFAULT_TOLERANCE);
     }
     public VectorizeStage(StageDescriptor descriptor, RasterMode rasterMode, VectorMode vectorMode, int maxPaths, int maxVertices) {
         this(descriptor, rasterMode, vectorMode, maxPaths, maxVertices, ColorCurveVectorizer.DEFAULT_TOLERANCE);
