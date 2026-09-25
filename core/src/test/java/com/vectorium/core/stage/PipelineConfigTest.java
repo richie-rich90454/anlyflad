@@ -14,7 +14,7 @@ public final class PipelineConfigTest {
         assertTrue(defaults.isClean());
         assertEquals("default", defaults.getPresetName());
         assertEquals(RasterMode.COLOR, defaults.getRasterMode());
-        assertEquals(VectorMode.CONTOUR, defaults.getVectorMode());
+        assertEquals(VectorMode.CURVE, defaults.getVectorMode());
         assertTrue(defaults.getOverrides().isEmpty());
         int[] defaultPalette={0, 0xFFFFFF};
         int[] copiedDefault=defaults.getIntegerArray("quantize", "palette", defaultPalette);
