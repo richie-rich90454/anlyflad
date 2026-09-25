@@ -41,6 +41,6 @@ public final class LayerSortStage implements ConfigurableStage, ColorTransformSt
     public VectorDocument apply(VectorDocument document) {
         ArrayList<VectorPath> paths=new ArrayList<VectorPath>(document.getPaths());
         paths.sort(new VectorPathAreaComparator(descending));
-        return document.withPaths(paths);
+        return document.withPathsAndOwnedPixels(paths);
     }
 }
