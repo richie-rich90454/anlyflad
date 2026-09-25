@@ -16,7 +16,8 @@ public final class SvgParser {
     private static final int MAX_ATTRIBUTES=64;
     private static final int MAX_PATHS=1000000;
     private static final int MAX_COORDINATES=4000000;
-    private static final int MAX_SOURCE_BYTES=64*1024*1024;
+    private static final int MAX_SOURCE_BYTES=1024*1024*1024;
+    private static final long MAX_PIXELS=100L*1024L*1024L;
     private static final int ROOT=1;
     private static final int GROUP=2;
     private static final int OTHER=3;
@@ -31,7 +32,7 @@ public final class SvgParser {
             throw new SvgParseException("SVG source must not be null");
         }
         if (SvgWriter.utf8Length(svg)>MAX_SOURCE_BYTES) {
-            throw new SvgParseException("SVG source exceeds the 64 MiB limit");
+            throw new SvgParseException("SVG source exceeds the 1 GiB limit");
         }
         ParseState state=new ParseState(svg);
         scan(state);
@@ -48,7 +49,7 @@ public final class SvgParser {
             while (count>=0) {
                 if (count>0) {
                     if ((long)source.length()+count>MAX_SOURCE_BYTES) {
-                        throw new SvgParseException("SVG source exceeds the 64 MiB limit");
+                        throw new SvgParseException("SVG source exceeds the 1 GiB limit");
                     }
                     source.append(buffer, 0, count);
                 }
@@ -209,6 +210,7 @@ public final class SvgParser {
         }
         state.opacityStack[0]=1.0;
         state.fillOpacityStack[0]=1.0;
+        state.fillRuleStack[0]=VectorPath.FillRule.NONZERO;
         state.matrixStack[0]=1.0;
         state.matrixStack[1]=0.0;
         state.matrixStack[2]=0.0;
@@ -263,6 +265,22 @@ public final class SvgParser {
             state.height*=state.viewBoxHeight;
         }
         applyAttributes(state, tag, 0, -1);
+        validateRootDimensions(state);
+    }
+    private void validateRootDimensions(ParseState state) throws SvgParseException {
+        double width=state.widthSet?state.width:state.viewBoxSet?state.viewBoxWidth:0.0;
+        double height=state.heightSet?state.height:state.viewBoxSet?state.viewBoxHeight:0.0;
+        if (width<=0.0||height<=0.0) {
+            return;
+        }
+        if (width>Integer.MAX_VALUE||height>Integer.MAX_VALUE) {
+            throw error("SVG dimensions are too large");
+        }
+        long pixelWidth=(long)Math.ceil(width);
+        long pixelHeight=(long)Math.ceil(height);
+        if (pixelWidth*pixelHeight>MAX_PIXELS) {
+            throw error("SVG dimensions exceed the 100-megapixel limit");
+        }
     }
     private void pushContext(ParseState state, Tag tag) throws SvgParseException {
         if (state.contextDepth>=MAX_CONTEXT_DEPTH) {
@@ -292,6 +310,7 @@ public final class SvgParser {
         }
         state.opacityStack[target]=state.opacityStack[parent];
         state.fillOpacityStack[target]=state.fillOpacityStack[parent];
+        state.fillRuleStack[target]=state.fillRuleStack[parent];
     }
     private void applyAttributes(ParseState state, Tag tag, int target, int parent) throws SvgParseException {
         String color=tag.get("color");
@@ -309,6 +328,10 @@ public final class SvgParser {
         String fillOpacity=tag.get("fill-opacity");
         if (fillOpacity!=null) {
             state.fillOpacityStack[target]=baseFillOpacity(state, parent)*parseOpacity(fillOpacity, "fill-opacity");
+        }
+        String fillRule=tag.get("fill-rule");
+        if (fillRule!=null) {
+            applyFillRule(state, target, parent, fillRule);
         }
         String transform=tag.get("transform");
         if (transform!=null) {
@@ -357,6 +380,8 @@ public final class SvgParser {
                 state.opacityStack[target]=baseOpacity(state, parent)*parseOpacity(value, "opacity");
             } else if (name.equals("fill-opacity")) {
                 state.fillOpacityStack[target]=baseFillOpacity(state, parent)*parseOpacity(value, "fill-opacity");
+            } else if (name.equals("fill-rule")) {
+                applyFillRule(state, target, parent, value);
             } else if (name.equals("transform")) {
                 applyTransform(state, target, parent, value);
             }
@@ -409,6 +434,18 @@ public final class SvgParser {
         state.fillStack[offset+2]=parsed.getBlue();
         state.fillStack[offset+3]=parsed.getAlpha();
     }
+    private void applyFillRule(ParseState state, int target, int parent, String value) throws SvgParseException {
+        String normalized=value.trim();
+        if (normalized.equalsIgnoreCase("inherit")) {
+            state.fillRuleStack[target]=parent<0?VectorPath.FillRule.NONZERO:state.fillRuleStack[parent];
+            return;
+        }
+        try {
+            state.fillRuleStack[target]=VectorPath.FillRule.parse(normalized);
+        } catch (IllegalArgumentException exception) {
+            throw new SvgParseException("invalid fill-rule", exception);
+        }
+    }
     private void applyTransform(ParseState state, int target, int parent, String value) throws SvgParseException {
         SvgTransform parentTransform=parent<0?SvgTransform.identity():matrix(state, parent);
         SvgTransform ownTransform;
@@ -444,6 +481,7 @@ public final class SvgParser {
         int fillOffset=context*4;
         Color fill=new Color(state.fillStack[fillOffset], state.fillStack[fillOffset+1], state.fillStack[fillOffset+2], state.fillStack[fillOffset+3]);
         double opacity=state.opacityStack[context]*state.fillOpacityStack[context];
+        VectorPath.FillRule fillRule=state.fillRuleStack[context];
         StringBuilder path=new StringBuilder(64);
         if (name.equals("path")) {
             String data=tag.get("d");
@@ -465,9 +503,9 @@ public final class SvgParser {
         } else if (name.equals("ellipse")) {
             double cx=attributeNumber(tag, "cx", 0.0);
             double cy=attributeNumber(tag, "cy", 0.0);
-            double radiusX=requiredNonNegative(tag, "rx");
-            double radiusY=requiredNonNegative(tag, "ry");
-            appendEllipse(path, cx, cy, radiusX, radiusY);
+            double rx=requiredNonNegative(tag, "rx");
+            double ry=requiredNonNegative(tag, "ry");
+            appendEllipse(path, cx, cy, rx, ry);
         } else if (name.equals("line")) {
             appendLine(path, requiredNumber(tag, "x1"), requiredNumber(tag, "y1"), requiredNumber(tag, "x2"), requiredNumber(tag, "y2"));
         } else if (name.equals("polygon")) {
@@ -476,17 +514,16 @@ public final class SvgParser {
             appendPolygon(path, requiredPoints(tag, "points"), false);
         }
         SvgPathParser pathParser=new SvgPathParser();
-        List<VectorPath> parsed=pathParser.parse(path.toString(), transform, fill, opacity);
-        if (state.paths.size()+parsed.size()>MAX_PATHS) {
+        VectorPath parsed=pathParser.parseCompound(path.toString(), transform, fill, opacity, fillRule);
+        if (state.paths.size()>=MAX_PATHS) {
             throw error("SVG path count exceeds the supported limit");
         }
-        for (int index=0;index<parsed.size();index++) {
-            state.coordinateCount+=parsed.get(index).getNodeCount();
-            if (state.coordinateCount>MAX_COORDINATES) {
-                throw error("SVG coordinate count exceeds the supported limit");
-            }
+        long nextCoordinateCount=(long)state.coordinateCount+parsed.getNodeCount();
+        if (nextCoordinateCount>MAX_COORDINATES) {
+            throw error("SVG coordinate count exceeds the supported limit");
         }
-        state.paths.addAll(parsed);
+        state.coordinateCount=(int)nextCoordinateCount;
+        state.paths.add(parsed);
     }
     private double requiredNumber(Tag tag, String name) throws SvgParseException {
         String value=tag.get(name);
@@ -533,18 +570,27 @@ public final class SvgParser {
         int pixelHeight=toDimension(height, state.heightSet||state.viewBoxSet);
         List<VectorPath> paths=new ArrayList<VectorPath>(state.paths.size());
         for (int index=0;index<state.paths.size();index++) {
-            VectorPath path=state.paths.get(index);
-            paths.add(new VectorPath(PathId.of(index), path.getCoordinates(), path.isClosed(), path.getFill(), path.getOpacity()));
+            paths.add(copyPath(state.paths.get(index), PathId.of(index)));
         }
         long pixelLength=(long)pixelWidth*(long)pixelHeight;
-        if (pixelLength>Integer.MAX_VALUE) {
-            throw error("SVG dimensions are too large");
+        if (pixelLength>MAX_PIXELS||pixelLength>Integer.MAX_VALUE) {
+            throw error("SVG dimensions exceed the 100-megapixel limit");
         }
         try {
             return new VectorDocument(sourceName, new SvgOrigin(sourceName), paths, pixelWidth, pixelHeight, new int[(int)pixelLength], state.source);
         } catch (IllegalArgumentException exception) {
             throw new SvgParseException("unable to create SVG document: "+exception.getMessage(), exception);
         }
+    }
+    private VectorPath copyPath(VectorPath source, PathId id) {
+        double[][] cubic=source.getCubicRingCoordinates();
+        if (source.isCompound()) {
+            return new VectorPath(id, source.getRings(), cubic.length==0?null:cubic, source.getFillRule(), source.getFill(), source.getOpacity());
+        }
+        if (cubic.length>0&&cubic[0]!=null) {
+            return new VectorPath(id, source.getCoordinates(), cubic[0], source.isClosed(), source.getFill(), source.getOpacity(), source.getFillRule());
+        }
+        return new VectorPath(id, source.getCoordinates(), source.isClosed(), source.getFill(), source.getOpacity(), source.getFillRule());
     }
     private int toDimension(double value, boolean explicit) throws SvgParseException {
         if (!Double.isFinite(value)||value<0.0||value>Integer.MAX_VALUE) {
@@ -562,20 +608,14 @@ public final class SvgParser {
     private double derivedWidth(ParseState state) {
         double maximum=0.0;
         for (int index=0;index<state.paths.size();index++) {
-            double[] coordinates=state.paths.get(index).getCoordinates();
-            for (int coordinate=0;coordinate<coordinates.length;coordinate+=2) {
-                maximum=Math.max(maximum, coordinates[coordinate]);
-            }
+            maximum=Math.max(maximum, state.paths.get(index).getBounds().getMaxX());
         }
         return maximum;
     }
     private double derivedHeight(ParseState state) {
         double maximum=0.0;
         for (int index=0;index<state.paths.size();index++) {
-            double[] coordinates=state.paths.get(index).getCoordinates();
-            for (int coordinate=1;coordinate<coordinates.length;coordinate+=2) {
-                maximum=Math.max(maximum, coordinates[coordinate]);
-            }
+            maximum=Math.max(maximum, state.paths.get(index).getBounds().getMaxY());
         }
         return maximum;
     }
@@ -1164,6 +1204,7 @@ public final class SvgParser {
         private final int[] colorStack=new int[MAX_CONTEXT_DEPTH*3];
         private final double[] opacityStack=new double[MAX_CONTEXT_DEPTH];
         private final double[] fillOpacityStack=new double[MAX_CONTEXT_DEPTH];
+        private final VectorPath.FillRule[] fillRuleStack=new VectorPath.FillRule[MAX_CONTEXT_DEPTH];
         private int position;
         private int elementDepth;
         private int contextDepth;
