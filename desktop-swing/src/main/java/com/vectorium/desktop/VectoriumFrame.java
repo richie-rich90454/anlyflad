@@ -62,6 +62,7 @@ public final class VectoriumFrame extends JFrame {
         toolbar.addExportListener(new ExportListener());
         toolbar.addPresetListener(new PresetListener());
         toolbar.addModeListener(new ModeListener());
+        toolbar.addVectorModeListener(new VectorModeListener());
         toolbar.addCleanListener(new CleanListener());
         addWindowListener(new WindowCloseListener(this));
     }
@@ -87,8 +88,9 @@ public final class VectoriumFrame extends JFrame {
         return controller;
     }
     private void updatePipeline() {
-        PipelineConfig base=PipelineConfig.defaults().withPreset(toolbar.getPreset()).withRasterMode(toolbar.getRasterMode()).withClean(toolbar.isClean());
-        controller.setConfig(stageInspector.applyTo(base));
+        PipelineConfig base=PipelineConfig.defaults().withPreset(toolbar.getPreset()).withRasterMode(toolbar.getRasterMode()).withVectorMode(toolbar.getVectorMode()).withClean(toolbar.isClean());
+        PipelineConfig configured=stageInspector.applyTo(base).withStageValue("vectorize", "mode", toolbar.getVectorMode().getOptionName());
+        controller.setConfig(configured);
         controller.runPipeline();
     }
     private File chooseInput() {
@@ -139,6 +141,11 @@ public final class VectoriumFrame extends JFrame {
         }
     }
     private final class CleanListener implements ActionListener {
+        public void actionPerformed(ActionEvent event) {
+            updatePipeline();
+        }
+    }
+    private final class VectorModeListener implements ActionListener {
         public void actionPerformed(ActionEvent event) {
             updatePipeline();
         }
