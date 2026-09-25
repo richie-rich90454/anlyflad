@@ -38,6 +38,16 @@ public final class CleanerStagesTest {
         assertEquals(new Color(200, 0, 0, 255), output.getPaths().get(2).getFill());
     }
     @Test
+    public void shouldNotMergeDifferentAlphaColors() {
+        StageDescriptor descriptor=new StageDescriptor("color-merge", "Color Merge", "Merges colors", true);
+        ColorMergeStage stage=new ColorMergeStage(descriptor, 3.0);
+        VectorPath first=rectangle(0, 0, 0, 1, 1, 1, 1, 1).withStyle(new Color(100, 100, 100, 128), 1.0);
+        VectorPath second=rectangle(1, 0, 0, 1, 1, 1, 1, 1).withStyle(new Color(100, 100, 100, 255), 1.0);
+        VectorDocument output=stage.apply(document(first, second));
+        assertEquals(128, output.getPaths().get(0).getFill().getAlpha());
+        assertEquals(255, output.getPaths().get(1).getFill().getAlpha());
+    }
+    @Test
     public void shouldUnionOneHundredRectanglesIntoAtMostTenPaths() {
         StageDescriptor descriptor=new StageDescriptor("union", "Union", "Unions rectangles", true);
         UnionStage stage=new UnionStage(descriptor, 0.01);
@@ -53,11 +63,25 @@ public final class CleanerStagesTest {
         assertTrue(output.getPaths().size()<=10);
     }
     @Test
+    public void shouldNotFillDiagonalOrDifferentColorRectangles() {
+        StageDescriptor descriptor=new StageDescriptor("union", "Union", "Unions rectangles", true);
+        UnionStage stage=new UnionStage(descriptor, 0.0);
+        VectorPath diagonal=rectangle(0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0);
+        VectorPath other=rectangle(1, 1.0, 1.0, 2.0, 1.0, 2.0, 2.0, 1.0, 2.0);
+        VectorPath different=rectangle(1, 3.0, 0.0, 4.0, 0.0, 4.0, 1.0, 3.0, 1.0).withStyle(new Color(255, 0, 0, 255), 1.0);
+        VectorDocument document=document(diagonal, other, different);
+        assertEquals(3, stage.apply(document).getPaths().size());
+    }
+    @Test
     public void shouldSimplifySmoothSortDeduplicateAndFixHoles() {
         StageDescriptor simplifyDescriptor=new StageDescriptor("simplify", "Simplify", "Simplifies", true);
         SimplifyStage simplify=new SimplifyStage(simplifyDescriptor, 1.0);
         VectorPath line=new VectorPath(PathId.of(0), new double[]{0.0, 0.0, 1.0, 1.0, 2.0, 0.0}, false, new Color(0, 0, 0, 255), 1.0);
         assertEquals(2, simplify.apply(document(line)).getPaths().get(0).getNodeCount());
+        VectorPath thin=rectangle(1, 0.0, 0.0, 10.0, 0.0, 10.0, 1.0, 0.0, 1.0);
+        VectorPath simplifiedThin=simplify.apply(document(thin)).getPaths().get(0);
+        assertTrue(simplifiedThin.getNodeCount()>=3);
+        assertEquals(10.0, simplifiedThin.getArea(), 0.0);
         StageDescriptor smoothDescriptor=new StageDescriptor("smooth", "Smooth", "Smooths", true);
         SmoothStage smooth=new SmoothStage(smoothDescriptor, 1);
         VectorPath open=new VectorPath(PathId.of(1), new double[]{0.0, 0.0, 1.0, 0.0, 2.0, 0.0}, false, new Color(0, 0, 0, 255), 1.0);
