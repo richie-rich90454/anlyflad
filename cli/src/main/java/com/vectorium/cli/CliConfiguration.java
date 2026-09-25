@@ -7,15 +7,19 @@ import com.vectorium.core.model.ParamSpec;
 import com.vectorium.core.model.ParamType;
 import com.vectorium.core.model.StageDescriptor;
 import com.vectorium.core.stage.PipelineConfig;
+import com.vectorium.core.stage.RasterMode;
 import com.vectorium.core.stage.StandardStageDescriptors;
 public final class CliConfiguration {
     private static final List<String> PRESETS=Collections.unmodifiableList(Arrays.asList("default", "clean", "fast", "accurate"));
     public static PipelineConfig create(boolean clean, String presetName, List<String> stageValues, List<String> disabledStages) {
+        return create(clean, presetName, RasterMode.COLOR, stageValues, disabledStages);
+    }
+    public static PipelineConfig create(boolean clean, String presetName, RasterMode rasterMode, List<String> stageValues, List<String> disabledStages) {
         if (stageValues==null||disabledStages==null) {
             throw new IllegalArgumentException("stage option lists must not be null");
         }
         String normalizedPreset=normalizePreset(presetName);
-        PipelineConfig config=new PipelineConfig(clean, normalizedPreset, Collections.<String, String>emptyMap());
+        PipelineConfig config=new PipelineConfig(clean, normalizedPreset, rasterMode, Collections.<String, String>emptyMap());
         config=applyPreset(config, normalizedPreset);
         for (int index=0;index<stageValues.size();index++) {
             config=applyStageValue(config, stageValues.get(index));
@@ -23,8 +27,14 @@ public final class CliConfiguration {
         for (int index=0;index<disabledStages.size();index++) {
             String stageName=disabledStages.get(index);
             StandardStageDescriptors.get(stageName);
+            if ("validate".equals(stageName)) {
+                throw new IllegalArgumentException("The validate stage cannot be disabled because it is required for safe processing");
+            }
             if ("serialize".equals(stageName)) {
                 throw new IllegalArgumentException("The serialize stage cannot be disabled because it produces the output file");
+            }
+            if ("vectorize".equals(stageName)) {
+                throw new IllegalArgumentException("The vectorize stage cannot be disabled because it produces the vector output");
             }
             config=config.withStageDisabled(stageName);
         }
