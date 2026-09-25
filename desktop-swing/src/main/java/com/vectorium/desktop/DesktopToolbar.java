@@ -7,17 +7,22 @@ import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JPanel;
+import com.vectorium.core.stage.RasterMode;
 public final class DesktopToolbar extends JPanel {
     private static final long serialVersionUID=1L;
     private final JButton openButton;
     private final JButton exportButton;
     private final JComboBox<String> preset;
+    private final JComboBox<String> mode;
     private final JCheckBox clean;
+    private boolean exportAllowed;
+    private boolean running;
     public DesktopToolbar() {
         openButton=new JButton("Open image");
         exportButton=new JButton("Export SVG");
         exportButton.setEnabled(false);
         preset=new JComboBox<String>(new String[]{"default", "clean", "fast", "accurate"});
+        mode=new JComboBox<String>(new String[]{RasterMode.COLOR.getOptionName(), RasterMode.BINARY.getOptionName()});
         clean=new JCheckBox("Clean output", true);
         setLayout(new FlowLayout(FlowLayout.LEFT, 8, 8));
         setBackground(DesktopTheme.SURFACE);
@@ -26,12 +31,15 @@ public final class DesktopToolbar extends JPanel {
         add(exportButton);
         add(new javax.swing.JLabel("Preset"));
         add(preset);
+        add(new javax.swing.JLabel("Raster mode"));
+        add(mode);
         add(clean);
         openButton.setPreferredSize(new Dimension(112, 36));
         exportButton.setPreferredSize(new Dimension(112, 36));
         openButton.getAccessibleContext().setAccessibleName("Open image");
         exportButton.getAccessibleContext().setAccessibleName("Export SVG");
         preset.getAccessibleContext().setAccessibleName("Pipeline preset");
+        mode.getAccessibleContext().setAccessibleName("Raster mode");
         clean.getAccessibleContext().setAccessibleName("Enable clean output");
     }
     public void addOpenListener(ActionListener listener) {
@@ -43,21 +51,38 @@ public final class DesktopToolbar extends JPanel {
     public void addPresetListener(ActionListener listener) {
         preset.addActionListener(listener);
     }
+    public void addModeListener(ActionListener listener) {
+        mode.addActionListener(listener);
+    }
     public void addCleanListener(ActionListener listener) {
         clean.addActionListener(listener);
     }
     public void setExportEnabled(boolean enabled) {
-        exportButton.setEnabled(enabled);
+        exportAllowed=enabled;
+        exportButton.setEnabled(enabled&&!running);
     }
     public void setRunning(boolean running) {
+        this.running=running;
         openButton.setEnabled(!running);
-        exportButton.setEnabled(!running&&exportButton.isEnabled());
+        exportButton.setEnabled(!running&&exportAllowed);
+        preset.setEnabled(!running);
+        mode.setEnabled(!running);
+        clean.setEnabled(!running);
     }
     public String getPreset() {
         return (String)preset.getSelectedItem();
     }
     public void setPreset(String name) {
         preset.setSelectedItem(name);
+    }
+    public RasterMode getRasterMode() {
+        return RasterMode.parse((String)mode.getSelectedItem());
+    }
+    public void setRasterMode(RasterMode rasterMode) {
+        if (rasterMode==null) {
+            throw new IllegalArgumentException("rasterMode must not be null");
+        }
+        mode.setSelectedItem(rasterMode.getOptionName());
     }
     public boolean isClean() {
         return clean.isSelected();
