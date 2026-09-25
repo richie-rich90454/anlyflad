@@ -37,7 +37,7 @@ public final class AnlyfladCli {
     @Option(names="--mode", paramLabel="MODE", description="Raster mode: color or binary.")
     private String mode="color";
     @Option(names="--vector-mode", paramLabel="MODE", description="Vector mode: exact, contour, or curve.")
-    private String vectorMode="contour";
+    private String vectorMode="curve";
     @Option(names="--no-clean", description="Disable cleaner stages.")
     private boolean noClean;
     @Option(names="--stage", paramLabel="STAGE.PARAM=VALUE", description="Override a stage parameter. Repeatable.")
@@ -158,7 +158,7 @@ public final class AnlyfladCli {
         output=null;
         preset="default";
         mode="color";
-        vectorMode="contour";
+        vectorMode="curve";
         noClean=false;
         stageValues.clear();
         disabledStages.clear();
