@@ -70,4 +70,50 @@ public final class SvgPathParserTest {
             }
         }
     }
+    @Test
+    public void shouldRetainTransformedCubicDataAndContinuousClosure() throws Exception {
+        List<VectorPath> paths=new SvgPathParser().parse("M0 0 L1 0 C2 1 3 2 4 3 Z", SvgTransform.translation(10.0, 20.0), new Color(0, 0, 0, 255), 1.0);
+        VectorPath path=paths.get(0);
+        assertTrue(path.isClosed());
+        assertTrue(path.hasCubicData());
+        assertEquals(3, path.getCubicSegmentCount());
+        double[] cubic=path.getCubicRing(0);
+        assertEquals(10.0, cubic[0], 0.0);
+        assertEquals(20.0, cubic[1], 0.0);
+        assertEquals(12.0, cubic[10], 0.0);
+        assertEquals(21.0, cubic[11], 0.0);
+        assertEquals(13.0, cubic[12], 0.0);
+        assertEquals(22.0, cubic[13], 0.0);
+        assertEquals(14.0, cubic[14], 0.0);
+        assertEquals(23.0, cubic[15], 0.0);
+        double[] fallback=path.getCoordinates();
+        assertEquals(cubic[0], fallback[0], 0.0);
+        assertEquals(cubic[1], fallback[1], 0.0);
+        assertEquals(cubic[cubic.length-2], fallback[fallback.length-2], 0.0);
+        assertEquals(cubic[cubic.length-1], fallback[fallback.length-1], 0.0);
+        for (int offset=8;offset<cubic.length;offset+=8) {
+            assertEquals(cubic[offset-2], cubic[offset], 0.0);
+            assertEquals(cubic[offset-1], cubic[offset+1], 0.0);
+        }
+    }
+    @Test
+    public void shouldConvertQuadraticSmoothAndCompactArcFlagsToCubicData() throws Exception {
+        List<VectorPath> paths=new SvgPathParser().parse("M0 0 Q10 10 20 0 T40 0 A10 10 0 0110 10");
+        VectorPath path=paths.get(0);
+        assertTrue(path.hasCubicData());
+        assertTrue(path.getCubicSegmentCount()>=4);
+        assertEquals(20.0, path.getCubicSegment(0, 0)[6], 0.0);
+        assertEquals(40.0, path.getCubicSegment(0, 1)[6], 0.0);
+        assertEquals(10.0, path.getCubicSegment(0, path.getCubicSegmentCount()-1)[6], 0.0);
+        assertEquals(10.0, path.getCoordinates()[path.getCoordinates().length-2], 0.0);
+    }
+    @Test
+    public void shouldRejectDegenerateCompoundSubpaths() throws Exception {
+        try {
+            new SvgPathParser().parseCompound("M0 0 M1 1", SvgTransform.identity(), new Color(0, 0, 0, 255), 1.0, VectorPath.FillRule.NONZERO);
+            fail("Expected degenerate compound geometry to be rejected");
+        } catch (SvgParseException exception) {
+            assertTrue(exception.getMessage().length()>0);
+        }
+    }
 }
