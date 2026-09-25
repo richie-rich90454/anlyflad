@@ -9,17 +9,21 @@ import com.vectorium.core.model.StageDescriptor;
 import com.vectorium.core.stage.PipelineConfig;
 import com.vectorium.core.stage.RasterMode;
 import com.vectorium.core.stage.StandardStageDescriptors;
+import com.vectorium.core.stage.VectorMode;
 public final class CliConfiguration {
     private static final List<String> PRESETS=Collections.unmodifiableList(Arrays.asList("default", "clean", "fast", "accurate"));
     public static PipelineConfig create(boolean clean, String presetName, List<String> stageValues, List<String> disabledStages) {
         return create(clean, presetName, RasterMode.COLOR, stageValues, disabledStages);
     }
     public static PipelineConfig create(boolean clean, String presetName, RasterMode rasterMode, List<String> stageValues, List<String> disabledStages) {
+        return create(clean, presetName, rasterMode, VectorMode.CONTOUR, stageValues, disabledStages);
+    }
+    public static PipelineConfig create(boolean clean, String presetName, RasterMode rasterMode, VectorMode vectorMode, List<String> stageValues, List<String> disabledStages) {
         if (stageValues==null||disabledStages==null) {
             throw new IllegalArgumentException("stage option lists must not be null");
         }
         String normalizedPreset=normalizePreset(presetName);
-        PipelineConfig config=new PipelineConfig(clean, normalizedPreset, rasterMode, Collections.<String, String>emptyMap());
+        PipelineConfig config=new PipelineConfig(clean, normalizedPreset, rasterMode, vectorMode, Collections.<String, String>emptyMap());
         config=applyPreset(config, normalizedPreset);
         for (int index=0;index<stageValues.size();index++) {
             config=applyStageValue(config, stageValues.get(index));
