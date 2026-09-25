@@ -11,17 +11,19 @@
 <body>
 <main>
 <h1>Anlyflad</h1>
-<p>Raster and SVG vectorization in your browser.</p>
+<p>Raster and SVG vectorization in your browser. Image files up to 1 GiB; SVG files up to 1 GiB; raster images up to 100 megapixels at full resolution.</p>
 <div class="toolbar">
     <label for="file-input">Input file</label>
     <input id="file-input" type="file" accept=".png,.jpg,.jpeg,.svg">
     <label for="mode-input">Raster mode</label>
     <select id="mode-input"><option value="color">Color</option><option value="binary">Binary</option></select>
+    <label for="vector-mode-input">Vector mode</label>
+    <select id="vector-mode-input"><option value="contour">Contour</option><option value="exact">Exact runs</option><option value="curve">Curves</option></select>
     <button id="run-button" type="button">Vectorize</button>
 <a id="download" class="download" href="#" download="anlyflad.svg">Download SVG</a>
 </div>
 <div class="preview"><img id="preview" alt="Vectorized preview"></div>
-<div id="status" class="status" role="status" aria-live="polite">Choose a PNG, JPEG, or SVG file.</div>
+<div id="status" class="status" role="status" aria-live="polite">Choose a PNG, JPEG, or SVG file. Image files up to 1 GiB; SVG files up to 1 GiB; raster images up to 100 megapixels.</div>
 </main>
 <script type="module" src="anlyflad.js"></script>
 </body>
