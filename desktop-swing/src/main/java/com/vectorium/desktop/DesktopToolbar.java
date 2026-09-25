@@ -25,7 +25,7 @@ public final class DesktopToolbar extends JPanel {
         exportButton.setEnabled(false);
         preset=new JComboBox<String>(new String[]{"default", "clean", "fast", "accurate"});
         mode=new JComboBox<String>(new String[]{RasterMode.COLOR.getOptionName(), RasterMode.BINARY.getOptionName()});
-        vectorMode=new JComboBox<String>(new String[]{VectorMode.CONTOUR.getOptionName(), VectorMode.EXACT.getOptionName(), VectorMode.CURVE.getOptionName()});
+        vectorMode=new JComboBox<String>(new String[]{VectorMode.CURVE.getOptionName(), VectorMode.CONTOUR.getOptionName(), VectorMode.EXACT.getOptionName()});
         clean=new JCheckBox("Clean output", true);
         setLayout(new FlowLayout(FlowLayout.LEFT, 8, 8));
         setBackground(DesktopTheme.SURFACE);
