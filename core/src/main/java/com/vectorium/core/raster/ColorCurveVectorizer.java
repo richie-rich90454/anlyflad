@@ -13,11 +13,11 @@ public final class ColorCurveVectorizer {
     public static final int DEFAULT_MAX_VERTICES=ColorContourVectorizer.DEFAULT_MAX_VERTICES;
     public static final int MAX_PATHS=ColorContourVectorizer.MAX_PATHS;
     public static final int MAX_VERTICES=ColorContourVectorizer.MAX_VERTICES;
-    private static final double MIN_SIMPLIFICATION_TOLERANCE=1.0;
+    private static final double MIN_SIMPLIFICATION_TOLERANCE=2.0;
     private static final double MAX_SIMPLIFICATION_TOLERANCE=8.0;
+    private static final double CORNER_CUT_RADIUS=2.0;
     private static final int MAX_SMOOTHED_VERTICES=16384;
-    private static final int MAX_FIT_VERTICES=2048;
-    private static final double MIN_DETAIL_AREA=16.0;
+    private static final int MAX_FIT_VERTICES=16384;
     private static final double MIN_CORNER_RADIUS=0.5;
     private static final double MAX_CORNER_RADIUS=2.0;
     private static final double KAPPA=0.5522847498307936;
@@ -138,19 +138,22 @@ public final class ColorCurveVectorizer {
         if (ring.length<6) {
             return new FittedRing(ring,flatten(lineSegments(ring)));
         }
-        double[] original=ring.clone();
         double[] simplified=simplifyRing(ring,simplificationTolerance);
-        double[] polygon=removeCollinear(simplified);
+        double[] polygon=cornerCut(simplified,CORNER_CUT_RADIUS);
+        polygon=cleanRing(polygon);
         if (polygon.length<6) {
-            polygon=original;
-        }
-        if (isRectilinear(original)) {
-            return roundCorners(polygon,tolerance);
+            return new FittedRing(ring,flatten(lineSegments(ring)));
         }
         if (polygon.length/2<=MAX_FIT_VERTICES) {
-            return new FittedRing(polygon,flatten(new CubicBezierFitter(tolerance).fit(polygon)));
+            List<double[]> segments=new CubicBezierFitter(tolerance).fit(polygon);
+            double[] reduced=segmentEndpoints(segments);
+            reduced=cleanRing(reduced);
+            if (reduced.length>=6) {
+                return new FittedRing(reduced,splineSegments(reduced));
+            }
+            return new FittedRing(polygon,flatten(segments));
         }
-        return roundCorners(polygon,tolerance);
+        return new FittedRing(polygon,splineSegments(polygon));
     }
 
     private static double rasterSimplificationTolerance(double tolerance) {
@@ -185,11 +188,11 @@ public final class ColorCurveVectorizer {
 
     private static double[] simplifyRing(double[] ring,double tolerance) {
         int pointCount=ring.length/2;
-        if (pointCount>MAX_SMOOTHED_VERTICES) {
+        if (tolerance>0.0&&pointCount>MAX_SMOOTHED_VERTICES) {
             ring=limitVertices(ring,MAX_SMOOTHED_VERTICES);
             pointCount=ring.length/2;
         }
-        if (tolerance==0.0||pointCount<=8||ringArea(ring)<=MIN_DETAIL_AREA) {
+        if (tolerance==0.0||pointCount<=8) {
             return removeCollinear(ring);
         }
         boolean[] keep=new boolean[pointCount];
@@ -305,13 +308,67 @@ public final class ColorCurveVectorizer {
         return Math.abs(cross)<=MIN_DISTANCE&&dot>=0.0;
     }
 
-    private static double ringArea(double[] ring) {
-        double sum=0.0;
-        for (int index=0;index<ring.length;index+=2) {
-            int next=(index+2)%ring.length;
-            sum+=ring[index]*ring[next+1]-ring[next]*ring[index+1];
+    private static double[] cornerCut(double[] ring,double radius) {
+        int count=ring.length/2;
+        if (count<3) {
+            return ring;
         }
-        return Math.abs(sum)*0.5;
+        double[] result=new double[count*2];
+        for (int index=0;index<count;index++) {
+            int next=(index+1)%count;
+            double x=ring[index*2];
+            double y=ring[index*2+1];
+            double dx=ring[next*2]-x;
+            double dy=ring[next*2+1]-y;
+            double length=Math.hypot(dx,dy);
+            double localRadius=Math.min(radius,length*0.5);
+            if (length>MIN_DISTANCE) {
+                result[index*2]=x+dx/length*localRadius;
+                result[index*2+1]=y+dy/length*localRadius;
+            } else {
+                result[index*2]=x;
+                result[index*2+1]=y;
+            }
+        }
+        return result;
+    }
+
+    private static double[] segmentEndpoints(List<double[]> segments) {
+        double[] result=new double[segments.size()*2];
+        for (int index=0;index<segments.size();index++) {
+            result[index*2]=segments.get(index)[6];
+            result[index*2+1]=segments.get(index)[7];
+        }
+        return result;
+    }
+
+    private static double[] splineSegments(double[] ring) {
+        int count=ring.length/2;
+        double[] result=new double[count*8];
+        for (int index=0;index<count;index++) {
+            int previous=(index+count-1)%count;
+            int current=index;
+            int next=(index+1)%count;
+            int after=(index+2)%count;
+            double currentX=ring[current*2];
+            double currentY=ring[current*2+1];
+            double nextX=ring[next*2];
+            double nextY=ring[next*2+1];
+            double control1X=currentX+(nextX-ring[previous*2])/6.0;
+            double control1Y=currentY+(nextY-ring[previous*2+1])/6.0;
+            double control2X=nextX-(ring[after*2]-currentX)/6.0;
+            double control2Y=nextY-(ring[after*2+1]-currentY)/6.0;
+            int offset=index*8;
+            result[offset]=currentX;
+            result[offset+1]=currentY;
+            result[offset+2]=control1X;
+            result[offset+3]=control1Y;
+            result[offset+4]=control2X;
+            result[offset+5]=control2Y;
+            result[offset+6]=nextX;
+            result[offset+7]=nextY;
+        }
+        return result;
     }
 
     private static FittedRing roundCorners(double[] polygon,double tolerance) {
@@ -422,17 +479,6 @@ public final class ColorCurveVectorizer {
 
     private static boolean samePoint(double firstX,double firstY,double secondX,double secondY) {
         return firstX==secondX&&firstY==secondY;
-    }
-
-    private static boolean isRectilinear(double[] ring) {
-        int count=ring.length/2;
-        for (int index=0;index<count;index++) {
-            int next=(index+1)%count;
-            if (ring[index*2]!=ring[next*2]&&ring[index*2+1]!=ring[next*2+1]) {
-                return false;
-            }
-        }
-        return true;
     }
 
     private static final class FittedRing {
