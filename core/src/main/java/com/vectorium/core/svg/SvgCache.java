@@ -10,6 +10,8 @@ public final class SvgCache {
     private final AtomicReference<Entry[]> entries=new AtomicReference<Entry[]>(new Entry[MAX_ENTRIES]);
     private final AtomicInteger nextSlot=new AtomicInteger();
     private final AtomicLong totalBytes=new AtomicLong();
+    private volatile VectorDocument lastDocument;
+    private volatile String lastSvg;
     public SvgCache() {
     }
     public synchronized String get(VectorDocument document) {
@@ -21,7 +23,12 @@ public final class SvgCache {
                 return entry.svg;
             }
         }
+        if (lastDocument==document&&lastSvg!=null) {
+            return lastSvg;
+        }
         String svg=SvgWriter.write(document);
+        lastDocument=document;
+        lastSvg=svg;
         put(document, svg);
         return svg;
     }
@@ -96,6 +103,10 @@ public final class SvgCache {
             next[index]=null;
             if (entries.compareAndSet(current, next)) {
                 totalBytes.addAndGet(-removed.byteLength);
+                if (lastDocument==document) {
+                    lastDocument=null;
+                    lastSvg=null;
+                }
                 return true;
             }
         }
@@ -122,7 +133,8 @@ public final class SvgCache {
     public synchronized void clear() {
         entries.set(new Entry[MAX_ENTRIES]);
         nextSlot.set(0);
-        totalBytes.set(0L);
+        lastDocument=null;
+        lastSvg=null;
     }
     public synchronized int size() {
         Entry[] current=entries.get();
