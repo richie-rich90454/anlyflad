@@ -48,7 +48,9 @@ public final class VectoriumFrame extends JFrame {
         getAccessibleContext().setAccessibleName("Anlyflad desktop application");
         controller.setDocumentListener(new Runnable() {
             public void run() {
-                toolbar.setExportEnabled(controller.getResult()!=null);
+                boolean busy=controller.isBusy();
+                toolbar.setRunning(busy);
+                toolbar.setExportEnabled(!busy&&controller.getResult()!=null);
             }
         });
         stageInspector.setChangeListener(new Runnable() {
@@ -59,6 +61,7 @@ public final class VectoriumFrame extends JFrame {
         toolbar.addOpenListener(new OpenListener());
         toolbar.addExportListener(new ExportListener());
         toolbar.addPresetListener(new PresetListener());
+        toolbar.addModeListener(new ModeListener());
         toolbar.addCleanListener(new CleanListener());
         addWindowListener(new WindowCloseListener(this));
     }
@@ -84,7 +87,7 @@ public final class VectoriumFrame extends JFrame {
         return controller;
     }
     private void updatePipeline() {
-        PipelineConfig base=PipelineConfig.defaults().withPreset(toolbar.getPreset()).withClean(toolbar.isClean());
+        PipelineConfig base=PipelineConfig.defaults().withPreset(toolbar.getPreset()).withRasterMode(toolbar.getRasterMode()).withClean(toolbar.isClean());
         controller.setConfig(stageInspector.applyTo(base));
         controller.runPipeline();
     }
@@ -126,6 +129,11 @@ public final class VectoriumFrame extends JFrame {
         }
     }
     private final class PresetListener implements ActionListener {
+        public void actionPerformed(ActionEvent event) {
+            updatePipeline();
+        }
+    }
+    private final class ModeListener implements ActionListener {
         public void actionPerformed(ActionEvent event) {
             updatePipeline();
         }
