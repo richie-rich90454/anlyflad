@@ -3,7 +3,7 @@ import java.util.ArrayList;
 import com.vectorium.core.model.StageDescriptor;
 import com.vectorium.core.model.VectorDocument;
 import com.vectorium.core.model.VectorPath;
-public final class NormalizeStage implements ConfigurableStage {
+public final class NormalizeStage implements ConfigurableStage, ColorTransformStage {
     private final StageDescriptor descriptor;
     private final boolean enabled;
     public NormalizeStage(StageDescriptor descriptor, boolean enabled) {
