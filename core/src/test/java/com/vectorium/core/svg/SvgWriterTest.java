@@ -5,9 +5,11 @@ import java.nio.charset.StandardCharsets;
 import javax.xml.parsers.DocumentBuilderFactory;
 import org.xml.sax.InputSource;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import com.vectorium.core.model.Color;
@@ -72,6 +74,40 @@ public final class SvgWriterTest {
         factory.setNamespaceAware(true);
         factory.newDocumentBuilder().parse(new InputSource(new StringReader(svg)));
     }
+    @Test
+    public void shouldWriteCompoundSubpathsAndFillRuleAsWellFormedXml() throws Exception {
+        List<double[]> rings=Arrays.asList(
+            new double[]{0.0, 0.0, 10.0, 0.0, 10.0, 10.0, 0.0, 10.0},
+            new double[]{2.0, 2.0, 8.0, 2.0, 8.0, 8.0, 2.0, 8.0});
+        VectorPath evenOdd=new VectorPath(PathId.zero(), rings, new Color(10, 20, 30, 255), 1.0, VectorPath.FillRule.EVEN_ODD);
+        VectorDocument document=new VectorDocument("compound.svg", new SvgOrigin("compound.svg"), java.util.Collections.singletonList(evenOdd), 10, 10, new int[100]);
+        String output=SvgWriter.write(document);
+        assertTrue(output.contains("Z M"));
+        assertTrue(output.contains("fill-rule=\"evenodd\""));
+        assertWellFormed(output);
+        VectorPath nonzero=new VectorPath(PathId.zero(), rings, new Color(10, 20, 30, 255), 1.0, VectorPath.FillRule.NONZERO);
+        String nonzeroOutput=SvgWriter.write(new VectorDocument("compound.svg", new SvgOrigin("compound.svg"), java.util.Collections.singletonList(nonzero), 10, 10, new int[100]));
+        assertFalse(nonzeroOutput.contains("fill-rule"));
+        assertWellFormed(nonzeroOutput);
+    }
+    @Test
+    public void shouldWriteCubicSubpathsAsCCommands() throws Exception {
+        double[] fallback={0.0,0.0,10.0,0.0,10.0,10.0,0.0,10.0};
+        double[] cubic={
+            0.0,0.0,0.0,0.0,10.0/3.0,0.0,10.0,0.0,
+            10.0,0.0,20.0,0.0,20.0,10.0/3.0,10.0,10.0,
+            10.0,10.0,10.0,20.0,10.0,20.0/3.0,0.0,10.0,
+            0.0,10.0,0.0,20.0,0.0,10.0/3.0,0.0,0.0
+        };
+        VectorPath path=new VectorPath(PathId.zero(),Arrays.asList(fallback),new double[][]{cubic},new Color(10,20,30,255),1.0,VectorPath.FillRule.EVEN_ODD);
+        VectorDocument document=new VectorDocument("curve.svg",new SvgOrigin("curve.svg"),java.util.Collections.singletonList(path),10,10,new int[100]);
+        String output=SvgWriter.write(document);
+        assertTrue(output.contains(" C "));
+        assertFalse(output.contains(" L "));
+        assertTrue(output.contains(" Z"));
+        assertWellFormed(output);
+    }
+
     @Test
     public void shouldRejectNullDocument() {
         try {
