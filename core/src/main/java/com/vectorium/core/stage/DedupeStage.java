@@ -4,7 +4,7 @@ import com.vectorium.core.model.StageDescriptor;
 import com.vectorium.core.model.VectorDocument;
 import com.vectorium.core.model.VectorPath;
 import com.vectorium.core.perf.SpatialHash;
-public final class DedupeStage implements ConfigurableStage {
+public final class DedupeStage implements ConfigurableStage, ColorTransformStage {
     private final StageDescriptor descriptor;
     private final double tolerance;
     public DedupeStage(StageDescriptor descriptor, double tolerance) {
