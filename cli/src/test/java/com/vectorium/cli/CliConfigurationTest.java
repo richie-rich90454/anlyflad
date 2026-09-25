@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import com.vectorium.core.stage.PipelineConfig;
+import com.vectorium.core.stage.RasterMode;
 public final class CliConfigurationTest {
     @Test
     public void shouldApplyPresetAndExplicitValues() {
@@ -24,7 +25,10 @@ public final class CliConfigurationTest {
     public void shouldAcceptDefaultPresetAndNoOverrides() {
         PipelineConfig config=CliConfiguration.create(true, "default", Collections.<String>emptyList(), Collections.<String>emptyList());
         assertTrue(config.isClean());
+        assertEquals(RasterMode.COLOR, config.getRasterMode());
         assertTrue(config.getOverrides().isEmpty());
+        PipelineConfig binary=CliConfiguration.create(true, "default", RasterMode.BINARY, Collections.<String>emptyList(), Collections.<String>emptyList());
+        assertEquals(RasterMode.BINARY, binary.getRasterMode());
     }
     @Test
     public void shouldRejectInvalidConfigurationAtTrustBoundary() {
@@ -37,7 +41,7 @@ public final class CliConfigurationTest {
                 assertTrue(exception.getMessage().length()>0);
             }
         }
-        String[] disabled=new String[]{"unknown", "serialize"};
+        String[] disabled=new String[]{"unknown", "validate", "serialize"};
         for (int index=0;index<disabled.length;index++) {
             try {
                 CliConfiguration.create(true, "default", Collections.<String>emptyList(), Collections.singletonList(disabled[index]));
