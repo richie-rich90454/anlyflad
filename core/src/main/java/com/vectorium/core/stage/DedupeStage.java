@@ -86,16 +86,58 @@ public final class DedupeStage implements ConfigurableStage, ColorTransformStage
                 unique.add(document.getPaths().get(index));
             }
         }
-        return document.withPaths(unique);
+        return document.withPathsAndOwnedPixels(unique);
     }
     private boolean equivalent(VectorPath first, VectorPath second) {
-        if (first.isClosed()!=second.isClosed()||first.getNodeCount()!=second.getNodeCount()||first.getFill().toArgb()!=second.getFill().toArgb()||Double.doubleToLongBits(first.getOpacity())!=Double.doubleToLongBits(second.getOpacity())) {
+        if (first.isClosed()!=second.isClosed()||first.isCompound()!=second.isCompound()||first.getNodeCount()!=second.getNodeCount()||first.getFill().toArgb()!=second.getFill().toArgb()||first.getFillRule()!=second.getFillRule()||Double.doubleToLongBits(first.getOpacity())!=Double.doubleToLongBits(second.getOpacity())) {
             return false;
         }
-        double[] firstCoordinates=first.getCoordinates();
-        double[] secondCoordinates=second.getCoordinates();
-        for (int index=0;index<firstCoordinates.length;index++) {
-            if (Math.abs(firstCoordinates[index]-secondCoordinates[index])>tolerance) {
+        double[][] firstRings=first.getRingCoordinates();
+        double[][] secondRings=second.getRingCoordinates();
+        if (!ringsEquivalent(firstRings, secondRings)) {
+            return false;
+        }
+        return cubicEquivalent(first.getCubicRingCoordinates(), second.getCubicRingCoordinates());
+    }
+    private boolean ringsEquivalent(double[][] first, double[][] second) {
+        if (first.length!=second.length) {
+            return false;
+        }
+        for (int ringIndex=0;ringIndex<first.length;ringIndex++) {
+            if (!valuesEquivalent(first[ringIndex], second[ringIndex])) {
+                return false;
+            }
+        }
+        return true;
+    }
+    private boolean cubicEquivalent(double[][] first, double[][] second) {
+        boolean firstPresent=first.length>0;
+        boolean secondPresent=second.length>0;
+        if (firstPresent!=secondPresent) {
+            return false;
+        }
+        if (!firstPresent) {
+            return true;
+        }
+        if (first.length!=second.length) {
+            return false;
+        }
+        for (int ringIndex=0;ringIndex<first.length;ringIndex++) {
+            if ((first[ringIndex]==null)!=(second[ringIndex]==null)) {
+                return false;
+            }
+            if (first[ringIndex]!=null&&!valuesEquivalent(first[ringIndex], second[ringIndex])) {
+                return false;
+            }
+        }
+        return true;
+    }
+    private boolean valuesEquivalent(double[] first, double[] second) {
+        if (first.length!=second.length) {
+            return false;
+        }
+        for (int index=0;index<first.length;index++) {
+            if (Math.abs(first[index]-second[index])>tolerance) {
                 return false;
             }
         }
