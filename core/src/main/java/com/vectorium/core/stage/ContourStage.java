@@ -3,7 +3,7 @@ import java.util.Arrays;
 import com.vectorium.core.model.StageDescriptor;
 import com.vectorium.core.model.VectorDocument;
 import com.vectorium.core.raster.ThresholdService;
-public final class ContourStage implements ConfigurableStage {
+public final class ContourStage implements ConfigurableStage, ColorTransformStage {
     private final StageDescriptor descriptor;
     private final int threshold;
     public ContourStage(StageDescriptor descriptor, int threshold) {
