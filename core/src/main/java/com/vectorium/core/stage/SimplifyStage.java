@@ -4,7 +4,7 @@ import com.vectorium.core.geometry.DouglasPeucker;
 import com.vectorium.core.model.StageDescriptor;
 import com.vectorium.core.model.VectorDocument;
 import com.vectorium.core.model.VectorPath;
-public final class SimplifyStage implements ConfigurableStage {
+public final class SimplifyStage implements ConfigurableStage, ColorTransformStage {
     private final StageDescriptor descriptor;
     private final double tolerance;
     public SimplifyStage(StageDescriptor descriptor, double tolerance) {
@@ -56,6 +56,10 @@ public final class SimplifyStage implements ConfigurableStage {
             int[] stack=new int[pointCount*2];
             int[] outputIndices=new int[pointCount];
             int count=DouglasPeucker.simplify(coordinates, path.isClosed(), tolerance, keep, stack, outputIndices);
+            if (path.isClosed()&&count<3) {
+                simplified.add(path);
+                continue;
+            }
             double[] simplifiedCoordinates=new double[count*2];
             for (int outputIndex=0;outputIndex<count;outputIndex++) {
                 int sourceIndex=outputIndices[outputIndex];
