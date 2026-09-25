@@ -45,7 +45,7 @@ public final class WebDom {
         @JSProperty
         String getName();
         @JSProperty
-        int getSize();
+        double getSize();
         @JSProperty
         String getType();
     }
@@ -75,10 +75,14 @@ public final class WebDom {
     public static native void readText(File file, TextCallback callback);
     @JSBody(params={"file","callback"}, script="var reader = new FileReader(); reader.onload = function(){callback(reader.result);}; reader.onerror = function(){callback('');}; reader.readAsDataURL(file);")
     public static native void readDataUrl(File file, TextCallback callback);
-    @JSBody(params={"source","callback"}, script="var image = new Image(); image.onload = function(){var canvas = document.createElement('canvas'); canvas.width = image.width; canvas.height = image.height; var context = canvas.getContext('2d'); context.drawImage(image, 0, 0); callback(image.width, image.height, context.getImageData(0, 0, image.width, image.height).data);}; image.onerror = function(){callback(0, 0, null);}; image.src = source;")
+    @JSBody(params={"source","callback"}, script="var image = new Image(); image.onload = function(){if (image.width <= 0 || image.height <= 0 || image.width * image.height > 16777216) { callback(0, 0, null); return; } var canvas = document.createElement('canvas'); canvas.width = image.width; canvas.height = image.height; var context = canvas.getContext('2d'); context.drawImage(image, 0, 0); callback(image.width, image.height, context.getImageData(0, 0, image.width, image.height).data);}; image.onerror = function(){callback(0, 0, null);}; image.src = source;")
     public static native void readRaster(String source, RasterCallback callback);
     @JSBody(params={"value"}, script="return encodeURIComponent(value);")
     public static native String encodeUri(String value);
+    @JSBody(params={"value"}, script="var blob=new Blob([value],{type:'image/svg+xml'}); return URL.createObjectURL(blob);")
+    public static native String createObjectUrl(String value);
+    @JSBody(params={"value"}, script="URL.revokeObjectURL(value);")
+    public static native void revokeObjectUrl(String value);
     private WebDom() {
     }
 }
