@@ -41,6 +41,7 @@ public final class Pipeline {
             throw new IllegalArgumentException("config must not be null");
         }
         boolean colorMode=config.getRasterMode()==RasterMode.COLOR;
+        boolean exactMode=isExactMode(config);
         if (!config.isStageEnabled("validate")) {
             throw StageException.userError("validate cannot be disabled because it is required for safe processing");
         }
@@ -55,11 +56,11 @@ public final class Pipeline {
         VectorDocument current=input;
         for (int index=0;index<stages.size();index++) {
             Stage configured=stages.get(index);
-            if (colorMode&&configured instanceof ColorTransformStage) {
+            if (colorMode&&configured instanceof ColorTransformStage&&!(configured instanceof QuantizeStage&&!exactMode)) {
                 logger.onStage(configured.getName(), StageResult.SKIPPED, 0L);
                 continue;
             }
-            if (isExactMode(config)&&configured.getTag()==StageTag.CLEANER) {
+            if (exactMode&&configured.getTag()==StageTag.CLEANER) {
                 logger.onStage(configured.getName(), StageResult.SKIPPED, 0L);
                 continue;
             }
