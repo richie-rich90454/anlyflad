@@ -6,6 +6,7 @@ import com.vectorium.core.stage.BoundedPipelineMemoizer;
 import com.vectorium.core.stage.Pipeline;
 import com.vectorium.core.stage.PipelineConfig;
 import com.vectorium.core.stage.PipelineLogger;
+import com.vectorium.core.stage.RasterMode;
 import com.vectorium.core.stage.StageException;
 import com.vectorium.core.stage.StageRegistry;
 import com.vectorium.core.svg.SvgCache;
@@ -14,12 +15,16 @@ import com.vectorium.core.svg.SvgParser;
 import java.util.Collections;
 public final class VectoriumWeb {
     private static final long MAX_FILE_BYTES=16L*1024L*1024L;
+    private static final long MAX_PIXELS=16L*1024L*1024L;
     private WebDom.Document document;
     private WebDom.Element fileInput;
+    private WebDom.Element modeInput;
     private WebDom.Element runButton;
     private WebDom.Element preview;
     private WebDom.Element download;
     private WebDom.Element status;
+    private String previewUrl;
+    private long loadSequence;
     private VectorDocument current;
     public static void main(String[] args) {
         new VectoriumWeb().start();
@@ -27,6 +32,7 @@ public final class VectoriumWeb {
     public void start() {
         document=WebDom.document();
         fileInput=require("file-input");
+        modeInput=require("mode-input");
         runButton=require("run-button");
         preview=require("preview");
         download=require("download");
@@ -44,13 +50,17 @@ public final class VectoriumWeb {
         });
     }
     private void readFile() {
+        final long requestId=++loadSequence;
+        current=null;
+        clearPreview();
         WebDom.FileList files=fileInput.getFiles();
         if (files==null||files.getLength()==0) {
             setStatus("Choose a file first.");
             return;
         }
         WebDom.File file=files.get(0);
-        if (file.getSize()>MAX_FILE_BYTES) {
+        double fileSize=file.getSize();
+        if (!Double.isFinite(fileSize)||fileSize<0.0||fileSize>MAX_FILE_BYTES) {
             setStatus("The file is larger than 16 MiB.");
             return;
         }
@@ -58,7 +68,9 @@ public final class VectoriumWeb {
         if (name.toLowerCase(java.util.Locale.ROOT).endsWith(".svg")) {
             WebDom.readText(file, new WebDom.TextCallback() {
                 public void accept(String value) {
-                    loadSvg(file.getName(), value);
+                    if (requestId==loadSequence) {
+                        loadSvg(file.getName(), value);
+                    }
                 }
             });
             return;
@@ -66,9 +78,14 @@ public final class VectoriumWeb {
         if (name.toLowerCase(java.util.Locale.ROOT).endsWith(".png")||name.toLowerCase(java.util.Locale.ROOT).endsWith(".jpg")||name.toLowerCase(java.util.Locale.ROOT).endsWith(".jpeg")) {
             WebDom.readDataUrl(file, new WebDom.TextCallback() {
                 public void accept(String value) {
+                    if (requestId!=loadSequence) {
+                        return;
+                    }
                     WebDom.readRaster(value, new WebDom.RasterCallback() {
                         public void accept(int width, int height, WebDom.ImageData data) {
-                            loadRaster(file.getName(), width, height, data);
+                            if (requestId==loadSequence) {
+                                loadRaster(file.getName(), width, height, data);
+                            }
                         }
                     });
                 }
@@ -91,7 +108,7 @@ public final class VectoriumWeb {
             return;
         }
         long length=(long)width*(long)height;
-        if (length>Integer.MAX_VALUE) {
+        if (length>MAX_PIXELS) {
             setStatus("The image is too large.");
             return;
         }
@@ -101,7 +118,8 @@ public final class VectoriumWeb {
             int red=data.get(offset);
             int green=data.get(offset+1);
             int blue=data.get(offset+2);
-            pixels[index]=0xFF000000|(red<<16)|(green<<8)|blue;
+            int alpha=data.get(offset+3);
+            pixels[index]=(alpha<<24)|(red<<16)|(green<<8)|blue;
         }
         current=new VectorDocument(name, new RasterOrigin(name), Collections.<VectorPath>emptyList(), width, height, pixels);
         setStatus("Image loaded. Ready to vectorize.");
@@ -115,20 +133,32 @@ public final class VectoriumWeb {
         try {
             SvgCache cache=new SvgCache();
             StageRegistry registry=new StageRegistry(new WebLogger(), new BoundedPipelineMemoizer(), cache);
-            PipelineConfig config=PipelineConfig.defaults();
+            PipelineConfig config=PipelineConfig.defaults().withRasterMode(RasterMode.parse(modeInput.getValue()));
             Pipeline pipeline=registry.buildPipeline(config);
             VectorDocument result=pipeline.run(current, config);
             String svg=cache.get(result);
-            String dataUrl="data:image/svg+xml;charset=utf-8,"+WebDom.encodeUri(svg);
-            preview.setSrc(dataUrl);
-            download.setHref(dataUrl);
+            clearPreview();
+            previewUrl=WebDom.createObjectUrl(svg);
+            preview.setSrc(previewUrl);
+            download.setHref(previewUrl);
             download.setDownload("anlyflad.svg");
             setStatus("Vectorization complete: "+result.getPaths().size()+" paths.");
         } catch (StageException exception) {
             setStatus("Vectorization failed: "+exception.getMessage());
+        } catch (IllegalArgumentException exception) {
+            setStatus("Vectorization failed: "+exception.getMessage());
         } catch (RuntimeException exception) {
             setStatus("Vectorization failed.");
         }
+    }
+    private void clearPreview() {
+        if (previewUrl!=null) {
+            WebDom.revokeObjectUrl(previewUrl);
+            previewUrl=null;
+        }
+        preview.setSrc("");
+        download.setHref("");
+        download.setDownload("");
     }
     private WebDom.Element require(String id) {
         WebDom.Element element=document.getElementById(id);
