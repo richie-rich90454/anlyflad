@@ -4,6 +4,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import com.vectorium.core.model.VectorDocument;
 public final class BoundedPipelineMemoizer implements PipelineMemoizer {
     public static final int MAX_ENTRIES=16;
+    public static final long MAX_CACHED_PIXELS=4L*1024L*1024L;
     private final AtomicReference<Entry[]> entries=new AtomicReference<Entry[]>(new Entry[MAX_ENTRIES]);
     private final AtomicInteger nextSlot=new AtomicInteger();
     public BoundedPipelineMemoizer() {
@@ -24,6 +25,9 @@ public final class BoundedPipelineMemoizer implements PipelineMemoizer {
     public void put(VectorDocument input, long configHash, VectorDocument output) {
         if (input==null||output==null) {
             throw new IllegalArgumentException("memoizer documents must not be null");
+        }
+        if (!cacheable(input)||!cacheable(output)) {
+            return;
         }
         while (true) {
             Entry[] current=entries.get();
@@ -63,6 +67,9 @@ public final class BoundedPipelineMemoizer implements PipelineMemoizer {
             }
         }
         return size;
+    }
+    private boolean cacheable(VectorDocument document) {
+        return (long)document.getWidth()*document.getHeight()<=MAX_CACHED_PIXELS;
     }
     private int findEmpty(Entry[] current) {
         for (int index=0;index<current.length;index++) {
