@@ -1,16 +1,24 @@
 package com.vectorium.core.svg;
 import java.io.IOException;
 import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import com.vectorium.core.model.Color;
 import com.vectorium.core.model.VectorDocument;
 import com.vectorium.core.model.VectorPath;
 public final class SvgWriter {
+    public static final int MAX_OUTPUT_BYTES=64*1024*1024;
     private static final char[] HEX={'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
     public SvgWriter() {
     }
     public static String write(VectorDocument document) {
         if (document==null) {
             throw new IllegalArgumentException("document must not be null");
+        }
+        if (document.getSourceSvg()!=null) {
+            if (utf8Length(document.getSourceSvg())>MAX_OUTPUT_BYTES) {
+                throw new IllegalArgumentException("serialized SVG exceeds the 64 MiB output limit");
+            }
+            return document.getSourceSvg();
         }
         int estimatedSize=128;
         if (document.getPaths().size()<Integer.MAX_VALUE/64) {
@@ -25,12 +33,23 @@ public final class SvgWriter {
         output.append(document.getWidth());
         output.append(' ');
         output.append(document.getHeight());
-        output.append("\">");
+        output.append('"');
+        if (document.getOrigin().isRaster()) {
+            output.append(" shape-rendering=\"crispEdges\"");
+        }
+        output.append(">");
         for (int index=0;index<document.getPaths().size();index++) {
             appendPath(output, document.getPaths().get(index));
+            if (output.length()>MAX_OUTPUT_BYTES) {
+                throw new IllegalArgumentException("serialized SVG exceeds the 64 MiB output limit");
+            }
         }
         output.append("</svg>");
-        return output.toString();
+        String serialized=output.toString();
+        if (utf8Length(serialized)>MAX_OUTPUT_BYTES) {
+            throw new IllegalArgumentException("serialized SVG exceeds the 64 MiB output limit");
+        }
+        return serialized;
     }
     public static void write(VectorDocument document, Writer writer) throws IOException {
         if (writer==null) {
@@ -52,6 +71,12 @@ public final class SvgWriter {
     }
     public static void writeTo(VectorDocument document, Writer writer) throws IOException {
         new SvgWriter().write(document, writer);
+    }
+    static int utf8Length(String value) {
+        if (value==null) {
+            throw new IllegalArgumentException("value must not be null");
+        }
+        return value.getBytes(StandardCharsets.UTF_8).length;
     }
     private static void appendPath(StringBuilder output, VectorPath path) {
         double[] coordinates=path.getCoordinates();
