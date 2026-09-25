@@ -1,4 +1,6 @@
 package com.vectorium.core.model;
+import java.util.Arrays;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -104,6 +106,55 @@ public final class VectorPathTest {
             }
         }
     }
+    @Test
+    public void shouldStoreCompoundRingsWithHoleAndDefensiveCopies() {
+        double[][] rings={
+            {0.0, 0.0, 10.0, 0.0, 10.0, 10.0, 0.0, 10.0},
+            {2.0, 2.0, 8.0, 2.0, 8.0, 8.0, 2.0, 8.0}
+        };
+        VectorPath path=new VectorPath(PathId.of(4), rings, new Color(20, 40, 60, 255), 1.0, VectorPath.FillRule.EVEN_ODD);
+        assertTrue(path.isCompound());
+        assertTrue(path.isClosed());
+        assertEquals(2, path.getRingCount());
+        assertEquals(8, path.getNodeCount());
+        assertEquals(new Rect(0.0, 0.0, 10.0, 10.0), path.getBounds());
+        assertEquals(64.0, path.getArea(), 0.0);
+        assertEquals(VectorPath.FillRule.EVEN_ODD, path.getFillRule());
+        List<double[]> exposed=path.getRings();
+        assertNotSame(rings[0], exposed.get(0));
+        rings[0][0]=100.0;
+        exposed.get(1)[0]=100.0;
+        assertEquals(0.0, path.getRing(0)[0], 0.0);
+        assertEquals(2.0, path.getRing(1)[0], 0.0);
+        try {
+            exposed.clear();
+            fail("Expected compound ring list to be unmodifiable");
+        } catch (UnsupportedOperationException exception) {
+            assertTrue(exception.getClass()==UnsupportedOperationException.class);
+        }
+        VectorPath same=new VectorPath(PathId.of(4), new double[][]{{0.0, 0.0, 10.0, 0.0, 10.0, 10.0, 0.0, 10.0}, {2.0, 2.0, 8.0, 2.0, 8.0, 8.0, 2.0, 8.0}}, new Color(20, 40, 60, 255), 1.0, VectorPath.FillRule.EVEN_ODD);
+        assertEquals(path, same);
+        assertEquals(path.hashCode(), same.hashCode());
+        assertNotEquals(path, same.withFillRule(VectorPath.FillRule.NONZERO));
+        assertEquals(100.0, new VectorPath(PathId.of(5), new double[][]{{0.0, 0.0, 10.0, 0.0, 10.0, 10.0, 0.0, 10.0}, {2.0, 2.0, 8.0, 2.0, 8.0, 8.0, 2.0, 8.0}}, new Color(20, 40, 60, 255), 1.0, VectorPath.FillRule.NONZERO).getArea(), 0.0);
+        assertEquals(64.0, new VectorPath(PathId.of(6), new double[][]{{0.0, 0.0, 10.0, 0.0, 10.0, 10.0, 0.0, 10.0}, {2.0, 2.0, 2.0, 8.0, 8.0, 8.0, 8.0, 2.0}}, new Color(20, 40, 60, 255), 1.0, VectorPath.FillRule.NONZERO).getArea(), 0.0);
+    }
+    @Test
+    public void shouldDefensivelyCopyCubicSegmentsAndIncludeThemInEquality() {
+        double[] fallback={0.0,0.0,10.0,0.0,10.0,10.0,0.0,10.0};
+        double[] cubic={0.0,0.0,0.0,0.0,10.0/3.0,0.0,10.0,0.0,10.0,0.0,20.0,0.0,20.0,10.0/3.0,10.0,10.0,10.0,10.0,10.0,20.0,10.0,20.0/3.0,0.0,10.0,0.0,10.0,0.0,20.0,0.0,10.0/3.0,0.0,0.0};
+        VectorPath path=new VectorPath(PathId.of(7),Arrays.asList(fallback),new double[][]{cubic},new Color(1,2,3,255),1.0,VectorPath.FillRule.EVEN_ODD);
+        path.getCubicRings().get(0)[0]=99.0;
+        path.getCubicSegmentLists().get(0).get(0)[0]=98.0;
+        assertEquals(0.0,path.getCubicRing(0)[0],0.0);
+        assertEquals(0.0,path.getCubicRingCoordinates()[0][0],0.0);
+        assertTrue(path.hasCubicData());
+        VectorPath same=new VectorPath(PathId.of(7),Arrays.asList(fallback),new double[][]{cubic},new Color(1,2,3,255),1.0,VectorPath.FillRule.EVEN_ODD);
+        assertEquals(path,same);
+        assertEquals(path.hashCode(),same.hashCode());
+        assertNotEquals(path,path.withoutCubicData());
+    }
+
     @Test
     public void shouldUseValueEqualityHashCodeAndString() {
         VectorPath first=new VectorPath(PathId.of(2), new double[]{0.0, 0.0, 2.0, 0.0, 2.0, 2.0, 0.0, 2.0}, true, new Color(1, 2, 3, 4), 0.5);
