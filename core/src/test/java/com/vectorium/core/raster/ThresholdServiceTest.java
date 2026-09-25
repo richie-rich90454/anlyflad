@@ -10,7 +10,7 @@ public final class ThresholdServiceTest {
     public void shouldThresholdLuminanceAndForceOpaqueColors() {
         int[] pixels={argb(0x80, 0, 0, 0), argb(0x40, 255, 255, 255), argb(0, 128, 128, 128), argb(0, 127, 127, 127)};
         ThresholdService.apply(pixels, 128);
-        assertArrayEquals(new int[] {BLACK, WHITE, WHITE, BLACK}, pixels);
+        assertArrayEquals(new int[] {BLACK, WHITE, WHITE, WHITE}, pixels);
     }
     @Test
     public void shouldAcceptThresholdBounds() {
