@@ -137,7 +137,7 @@ public final class StageListPanel extends JPanel {
         try {
             for (int index=0;index<names.size();index++) {
                 String name=names.get(index);
-                enabled.put(name, Boolean.valueOf(config.isStageEnabled(name)));
+                enabled.put(name, Boolean.valueOf(isProtectedStage(name)||config.isStageEnabled(name)));
             }
             updateSelectedStage();
         } finally {
@@ -157,7 +157,7 @@ public final class StageListPanel extends JPanel {
         String stageName=getSelectedStageName();
         boolean selected=enabled.get(stageName).booleanValue();
         enabledCheck.setSelected(selected);
-        enabledCheck.setEnabled(!"serialize".equals(stageName));
+        enabledCheck.setEnabled(!isProtectedStage(stageName));
         description.setText(registry.getDescriptor(stageName).getDescription());
     }
     private void notifyChanged() {
@@ -172,9 +172,12 @@ public final class StageListPanel extends JPanel {
     }
     private void ensureMutableStage(String stageName) {
         ensureKnownStage(stageName);
-        if ("serialize".equals(stageName)) {
-            throw new IllegalArgumentException("The serialize stage cannot be disabled");
+        if (isProtectedStage(stageName)) {
+            throw new IllegalArgumentException("The validate, serialize, and vectorize stages cannot be disabled");
         }
+    }
+    private boolean isProtectedStage(String stageName) {
+        return "validate".equals(stageName)||"serialize".equals(stageName)||"vectorize".equals(stageName);
     }
     private final class SelectionHandler implements ListSelectionListener {
         public void valueChanged(ListSelectionEvent event) {
