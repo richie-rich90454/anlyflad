@@ -58,7 +58,7 @@ public final class PreprocessStage implements ConfigurableStage, ColorTransformS
             if (contrast!=1.0) {
                 RasterPreprocessor.contrast(pixels, contrast);
             }
-            return document.withPixels(pixels);
+            return document.withOwnedPixels(pixels);
         } catch (IllegalArgumentException exception) {
             throw new StageException("unable to preprocess raster", exception);
         }
