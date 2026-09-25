@@ -10,7 +10,11 @@ public final class VectorDocument {
     private final int width;
     private final int height;
     private final int[] pixels;
+    private final String sourceSvg;
     public VectorDocument(String documentId, Origin origin, List<VectorPath> paths, int width, int height, int[] pixels) {
+        this(documentId, origin, paths, width, height, pixels, null);
+    }
+    public VectorDocument(String documentId, Origin origin, List<VectorPath> paths, int width, int height, int[] pixels, String sourceSvg) {
         if (documentId==null||documentId.trim().isEmpty()) {
             throw new IllegalArgumentException("documentId must not be blank");
         }
@@ -41,6 +45,7 @@ public final class VectorDocument {
         this.width=width;
         this.height=height;
         this.pixels=Arrays.copyOf(pixels, pixels.length);
+        this.sourceSvg=sourceSvg;
     }
     public static VectorDocument emptySvg(String documentId, int width, int height) {
         return new VectorDocument(documentId, new SvgOrigin(documentId), Collections.<VectorPath>emptyList(), width, height, new int[pixelLength(width, height)]);
@@ -66,6 +71,9 @@ public final class VectorDocument {
     public int[] getOwnedPixels() {
         return pixels;
     }
+    public String getSourceSvg() {
+        return sourceSvg;
+    }
     public VectorDocument withPaths(List<VectorPath> paths) {
         return new VectorDocument(documentId, origin, paths, width, height, pixels);
     }
@@ -89,7 +97,7 @@ public final class VectorDocument {
             return false;
         }
         VectorDocument document=(VectorDocument)other;
-        return width==document.width&&height==document.height&&documentId.equals(document.documentId)&&origin.equals(document.origin)&&paths.equals(document.paths)&&Arrays.equals(pixels, document.pixels);
+        return width==document.width&&height==document.height&&documentId.equals(document.documentId)&&origin.equals(document.origin)&&paths.equals(document.paths)&&Arrays.equals(pixels, document.pixels)&&(sourceSvg==null?document.sourceSvg==null:sourceSvg.equals(document.sourceSvg));
     }
     @Override
     public int hashCode() {
@@ -100,6 +108,7 @@ public final class VectorDocument {
         result=31*result+width;
         result=31*result+height;
         result=31*result+Arrays.hashCode(pixels);
+        result=31*result+(sourceSvg==null?0:sourceSvg.hashCode());
         return result;
     }
     @Override
