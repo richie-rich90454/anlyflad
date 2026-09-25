@@ -97,7 +97,7 @@ public final class ColorMergeStage implements ConfigurableStage, ColorTransformS
             }
             merged.add(result);
         }
-        return document.withPaths(merged);
+        return document.withPathsAndOwnedPixels(merged);
     }
     private double colorDistanceSquared(VectorPath first, VectorPath second) {
         if (first.getFill().getAlpha()!=second.getFill().getAlpha()) {
