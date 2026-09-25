@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import com.vectorium.core.model.PathId;
+import com.vectorium.core.model.RasterOrigin;
 import com.vectorium.core.model.SvgOrigin;
 import com.vectorium.core.model.VectorDocument;
 import com.vectorium.core.model.VectorPath;
@@ -40,6 +41,17 @@ public final class VectorCanvasTest {
         vectorCanvas.fitToViewport();
         BufferedImage vectorImage=paint(vectorCanvas, 320, 240);
         assertTrue(countPixels(vectorImage, 0xFFD65A31)>0);
+    }
+    @Test
+    public void shouldRenderRasterOriginVectorResultsWithoutStalePixels() {
+        VectorCanvas canvas=new VectorCanvas();
+        canvas.setSize(320, 240);
+        VectorPath path=new VectorPath(PathId.of(0), new double[]{0.0, 0.0, 2.0, 0.0, 2.0, 2.0, 0.0, 2.0}, true, new com.vectorium.core.model.Color(12, 34, 56, 255), 1.0);
+        VectorDocument rasterResult=new VectorDocument("raster.png", new RasterOrigin("raster.png"), Collections.singletonList(path), 2, 2, new int[]{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF});
+        canvas.setVectorResult(rasterResult);
+        canvas.fitToViewport();
+        BufferedImage image=paint(canvas, 320, 240);
+        assertTrue(countPixels(image, 0xFF0C2238)>0);
     }
     @Test
     public void shouldFitAndClampZoom() {
