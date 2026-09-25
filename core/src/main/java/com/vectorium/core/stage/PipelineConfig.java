@@ -11,10 +11,10 @@ public final class PipelineConfig {
     private final VectorMode vectorMode;
     private final Map<String, String> overrides;
     public PipelineConfig(boolean clean, String presetName, Map<String, String> overrides) {
-        this(clean, presetName, RasterMode.COLOR, VectorMode.CONTOUR, overrides);
+        this(clean, presetName, RasterMode.COLOR, VectorMode.CURVE, overrides);
     }
     public PipelineConfig(boolean clean, String presetName, RasterMode rasterMode, Map<String, String> overrides) {
-        this(clean, presetName, rasterMode, VectorMode.CONTOUR, overrides);
+        this(clean, presetName, rasterMode, VectorMode.CURVE, overrides);
     }
     public PipelineConfig(boolean clean, String presetName, RasterMode rasterMode, VectorMode vectorMode, Map<String, String> overrides) {
         if (presetName==null||presetName.trim().isEmpty()) {
@@ -46,7 +46,7 @@ public final class PipelineConfig {
         this.overrides=Collections.unmodifiableMap(copiedOverrides);
     }
     public static PipelineConfig defaults() {
-        return new PipelineConfig(true, "default", RasterMode.COLOR, VectorMode.CONTOUR, Collections.<String, String>emptyMap());
+        return new PipelineConfig(true, "default", RasterMode.COLOR, VectorMode.CURVE, Collections.<String, String>emptyMap());
     }
     public boolean isClean() {
         return clean;
