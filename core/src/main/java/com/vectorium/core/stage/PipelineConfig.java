@@ -7,10 +7,17 @@ import java.util.TreeMap;
 public final class PipelineConfig {
     private final boolean clean;
     private final String presetName;
+    private final RasterMode rasterMode;
     private final Map<String, String> overrides;
     public PipelineConfig(boolean clean, String presetName, Map<String, String> overrides) {
+        this(clean, presetName, RasterMode.COLOR, overrides);
+    }
+    public PipelineConfig(boolean clean, String presetName, RasterMode rasterMode, Map<String, String> overrides) {
         if (presetName==null||presetName.trim().isEmpty()) {
             throw new IllegalArgumentException("presetName must not be blank");
+        }
+        if (rasterMode==null) {
+            throw new IllegalArgumentException("rasterMode must not be null");
         }
         if (overrides==null) {
             throw new IllegalArgumentException("overrides must not be null");
@@ -27,10 +34,11 @@ public final class PipelineConfig {
         }
         this.clean=clean;
         this.presetName=presetName;
+        this.rasterMode=rasterMode;
         this.overrides=Collections.unmodifiableMap(copiedOverrides);
     }
     public static PipelineConfig defaults() {
-        return new PipelineConfig(true, "default", Collections.<String, String>emptyMap());
+        return new PipelineConfig(true, "default", RasterMode.COLOR, Collections.<String, String>emptyMap());
     }
     public boolean isClean() {
         return clean;
@@ -38,14 +46,20 @@ public final class PipelineConfig {
     public String getPresetName() {
         return presetName;
     }
+    public RasterMode getRasterMode() {
+        return rasterMode;
+    }
     public Map<String, String> getOverrides() {
         return overrides;
     }
     public PipelineConfig withClean(boolean clean) {
-        return new PipelineConfig(clean, presetName, overrides);
+        return new PipelineConfig(clean, presetName, rasterMode, overrides);
     }
     public PipelineConfig withPreset(String presetName) {
-        return new PipelineConfig(clean, presetName, overrides);
+        return new PipelineConfig(clean, presetName, rasterMode, overrides);
+    }
+    public PipelineConfig withRasterMode(RasterMode rasterMode) {
+        return new PipelineConfig(clean, presetName, rasterMode, overrides);
     }
     public PipelineConfig withStageValue(String stageName, String parameterName, String value) {
         validateName(stageName, "stageName");
@@ -55,7 +69,7 @@ public final class PipelineConfig {
         }
         TreeMap<String, String> updated=new TreeMap<String, String>(overrides);
         updated.put(qualifiedKey(stageName, parameterName), value);
-        return new PipelineConfig(clean, presetName, updated);
+        return new PipelineConfig(clean, presetName, rasterMode, updated);
     }
     public PipelineConfig withStageDisabled(String stageName) {
         return withStageValue(stageName, "enabled", "false");
@@ -65,7 +79,7 @@ public final class PipelineConfig {
         TreeMap<String, String> updated=new TreeMap<String, String>(overrides);
         String prefix=stageName+".";
         updated.subMap(prefix, prefix+"\uffff").clear();
-        return new PipelineConfig(clean, presetName, updated);
+        return new PipelineConfig(clean, presetName, rasterMode, updated);
     }
     public boolean isStageEnabled(String stageName) {
         return getBoolean(stageName, "enabled", true);
@@ -142,6 +156,7 @@ public final class PipelineConfig {
     public long getConfigHash() {
         long result=clean?1L:0L;
         result=31L*result+presetName.hashCode();
+        result=31L*result+rasterMode.hashCode();
         result=31L*result+overrides.hashCode();
         return result;
     }
@@ -154,19 +169,20 @@ public final class PipelineConfig {
             return false;
         }
         PipelineConfig config=(PipelineConfig)other;
-        return clean==config.clean&&presetName.equals(config.presetName)&&overrides.equals(config.overrides);
+        return clean==config.clean&&presetName.equals(config.presetName)&&rasterMode==config.rasterMode&&overrides.equals(config.overrides);
     }
     @Override
     public int hashCode() {
         int result=17;
         result=31*result+(clean?1:0);
         result=31*result+presetName.hashCode();
+        result=31*result+rasterMode.hashCode();
         result=31*result+overrides.hashCode();
         return result;
     }
     @Override
     public String toString() {
-        return "PipelineConfig{clean="+clean+", presetName="+presetName+", overrides="+overrides+"}";
+        return "PipelineConfig{clean="+clean+", presetName="+presetName+", rasterMode="+rasterMode+", overrides="+overrides+"}";
     }
     private static String qualifiedKey(String stageName, String parameterName) {
         validateName(stageName, "stageName");
