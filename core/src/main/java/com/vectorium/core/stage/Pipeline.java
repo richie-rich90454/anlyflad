@@ -59,6 +59,10 @@ public final class Pipeline {
                 logger.onStage(configured.getName(), StageResult.SKIPPED, 0L);
                 continue;
             }
+            if (isExactMode(config)&&configured.getTag()==StageTag.CLEANER) {
+                logger.onStage(configured.getName(), StageResult.SKIPPED, 0L);
+                continue;
+            }
             if (configured.getTag()==StageTag.CLEANER&&!config.isClean()) {
                 logger.onStage(configured.getName(), StageResult.SKIPPED, 0L);
                 continue;
@@ -93,8 +97,15 @@ public final class Pipeline {
                 throw exception;
             }
         }
+        if (!colorMode&&!current.getOrigin().isRaster()) {
+            current=current.withPathsAndOwnedPixels(current.getPaths());
+        }
         memoizer.put(input, configHash, current);
         return current;
+    }
+    private boolean isExactMode(PipelineConfig config) {
+        String mode=config.getString("vectorize", "mode", config.getVectorMode().getOptionName());
+        return VectorMode.parse(mode)==VectorMode.EXACT;
     }
     public List<Stage> getStages() {
         return stages;
