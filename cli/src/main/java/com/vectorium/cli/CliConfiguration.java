@@ -16,7 +16,7 @@ public final class CliConfiguration {
         return create(clean, presetName, RasterMode.COLOR, stageValues, disabledStages);
     }
     public static PipelineConfig create(boolean clean, String presetName, RasterMode rasterMode, List<String> stageValues, List<String> disabledStages) {
-        return create(clean, presetName, rasterMode, VectorMode.CONTOUR, stageValues, disabledStages);
+        return create(clean, presetName, rasterMode, VectorMode.CURVE, stageValues, disabledStages);
     }
     public static PipelineConfig create(boolean clean, String presetName, RasterMode rasterMode, VectorMode vectorMode, List<String> stageValues, List<String> disabledStages) {
         if (stageValues==null||disabledStages==null) {
