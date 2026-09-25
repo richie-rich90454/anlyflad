@@ -137,6 +137,9 @@ public final class VectorDocumentTest {
         VectorDocument second=new VectorDocument("document", new SvgOrigin("drawing.svg"), Arrays.asList(path), 1, 1, new int[]{123});
         assertEquals(first, second);
         assertEquals(first.hashCode(), second.hashCode());
+        VectorDocument sourceOne=new VectorDocument("document", new SvgOrigin("drawing.svg"), Arrays.asList(path), 1, 1, new int[]{123}, "<svg width='1' height='1'/>");
+        VectorDocument sourceTwo=new VectorDocument("document", new SvgOrigin("drawing.svg"), Arrays.asList(path), 1, 1, new int[]{123}, "<svg width='1' height='1'><path d='M0 0 L1 1'/></svg>");
+        assertNotEquals(sourceOne, sourceTwo);
         assertNotEquals(first, second.withOrigin(new RasterOrigin("drawing.svg")));
         assertEquals("VectorDocument{documentId=document, origin=SvgOrigin{sourceName=drawing.svg}, paths=[VectorPath{id=PathId{value=0}, coordinates=[0.0, 0.0, 1.0, 0.0, 1.0, 1.0], closed=true, fill=Color{red=0, green=0, blue=0, alpha=255}, opacity=1.0, bounds=Rect{minX=0.0, minY=0.0, maxX=1.0, maxY=1.0}, area=0.5, nodeCount=3}], width=1, height=1, pixelLength=1}", first.toString());
     }
