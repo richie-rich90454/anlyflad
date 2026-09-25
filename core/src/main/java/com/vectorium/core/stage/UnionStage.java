@@ -7,7 +7,7 @@ import com.vectorium.core.model.StageDescriptor;
 import com.vectorium.core.model.VectorDocument;
 import com.vectorium.core.model.VectorPath;
 import com.vectorium.core.perf.SpatialHash;
-public final class UnionStage implements ConfigurableStage {
+public final class UnionStage implements ConfigurableStage, ColorTransformStage {
     private final StageDescriptor descriptor;
     private final double distance;
     public UnionStage(StageDescriptor descriptor, double distance) {
@@ -73,15 +73,10 @@ public final class UnionStage implements ConfigurableStage {
                         continue;
                     }
                     Rectangle candidate=rectangles.get(candidateId);
-                    if (!candidate.active||!touches(rectangle, candidate)) {
+                    if (!candidate.active||!sameStyle(rectangle, candidate)||!touches(rectangle, candidate)) {
                         continue;
                     }
-                    if (candidate.bounds.getArea()>rectangle.colorArea) {
-                        rectangle.fill=candidate.fill;
-                        rectangle.opacity=candidate.opacity;
-                    }
                     rectangle.bounds=rectangle.bounds.union(candidate.bounds);
-                    rectangle.colorArea=rectangle.bounds.getArea();
                     candidate.active=false;
                     changed=true;
                     break;
@@ -110,7 +105,12 @@ public final class UnionStage implements ConfigurableStage {
     private boolean touches(Rectangle first, Rectangle second) {
         double horizontalGap=gap(first.bounds.getMinX(), first.bounds.getMaxX(), second.bounds.getMinX(), second.bounds.getMaxX());
         double verticalGap=gap(first.bounds.getMinY(), first.bounds.getMaxY(), second.bounds.getMinY(), second.bounds.getMaxY());
-        return horizontalGap*horizontalGap+verticalGap*verticalGap<=distance*distance;
+        boolean sameX=first.bounds.getMinX()==second.bounds.getMinX()&&first.bounds.getMaxX()==second.bounds.getMaxX();
+        boolean sameY=first.bounds.getMinY()==second.bounds.getMinY()&&first.bounds.getMaxY()==second.bounds.getMaxY();
+        return (sameX&&verticalGap<=distance)||(sameY&&horizontalGap<=distance);
+    }
+    private boolean sameStyle(Rectangle first, Rectangle second) {
+        return first.fill.equals(second.fill)&&Double.doubleToLongBits(first.opacity)==Double.doubleToLongBits(second.opacity);
     }
     private double gap(double firstMin, double firstMax, double secondMin, double secondMax) {
         double value=Math.max(firstMin-secondMax, secondMin-firstMax);
@@ -127,13 +127,11 @@ public final class UnionStage implements ConfigurableStage {
         private Rect bounds;
         private Color fill;
         private double opacity;
-        private double colorArea;
         private boolean active;
         private Rectangle(VectorPath path) {
             this.bounds=path.getBounds();
             this.fill=path.getFill();
             this.opacity=path.getOpacity();
-            this.colorArea=bounds.getArea();
             this.active=true;
         }
     }
