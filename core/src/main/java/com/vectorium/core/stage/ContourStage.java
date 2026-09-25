@@ -51,7 +51,7 @@ public final class ContourStage implements ConfigurableStage, ColorTransformStag
         int[] pixels=Arrays.copyOf(document.getOwnedPixels(), document.getOwnedPixels().length);
         try {
             ThresholdService.apply(pixels, threshold);
-            return document.withPixels(pixels);
+            return document.withOwnedPixels(pixels);
         } catch (IllegalArgumentException exception) {
             throw new StageException("unable to threshold raster", exception);
         }
