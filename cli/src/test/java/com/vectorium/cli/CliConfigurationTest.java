@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import com.vectorium.core.stage.PipelineConfig;
 import com.vectorium.core.stage.RasterMode;
+import com.vectorium.core.stage.VectorMode;
 public final class CliConfigurationTest {
     @Test
     public void shouldApplyPresetAndExplicitValues() {
@@ -26,6 +27,7 @@ public final class CliConfigurationTest {
         PipelineConfig config=CliConfiguration.create(true, "default", Collections.<String>emptyList(), Collections.<String>emptyList());
         assertTrue(config.isClean());
         assertEquals(RasterMode.COLOR, config.getRasterMode());
+        assertEquals(VectorMode.CURVE, config.getVectorMode());
         assertTrue(config.getOverrides().isEmpty());
         PipelineConfig binary=CliConfiguration.create(true, "default", RasterMode.BINARY, Collections.<String>emptyList(), Collections.<String>emptyList());
         assertEquals(RasterMode.BINARY, binary.getRasterMode());
