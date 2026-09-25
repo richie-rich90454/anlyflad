@@ -4,7 +4,7 @@ import java.util.List;
 import com.vectorium.core.model.StageDescriptor;
 import com.vectorium.core.model.VectorDocument;
 import com.vectorium.core.model.VectorPath;
-public final class SpeckFilterStage implements ConfigurableStage {
+public final class SpeckFilterStage implements ConfigurableStage, ColorTransformStage {
     private final StageDescriptor descriptor;
     private final double minArea;
     public SpeckFilterStage(StageDescriptor descriptor, double minArea) {
