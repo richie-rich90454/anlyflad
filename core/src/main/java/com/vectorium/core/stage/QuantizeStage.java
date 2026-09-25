@@ -48,7 +48,7 @@ public final class QuantizeStage implements ConfigurableStage, ColorTransformSta
         int[] pixels=Arrays.copyOf(document.getOwnedPixels(), document.getOwnedPixels().length);
         try {
             quantizer.quantize(pixels);
-            return document.withPixels(pixels);
+            return document.withOwnedPixels(pixels);
         } catch (IllegalArgumentException exception) {
             throw new StageException("unable to quantize raster", exception);
         }
