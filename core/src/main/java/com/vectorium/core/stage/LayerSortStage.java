@@ -3,7 +3,7 @@ import java.util.ArrayList;
 import com.vectorium.core.model.StageDescriptor;
 import com.vectorium.core.model.VectorDocument;
 import com.vectorium.core.model.VectorPath;
-public final class LayerSortStage implements ConfigurableStage {
+public final class LayerSortStage implements ConfigurableStage, ColorTransformStage {
     private final StageDescriptor descriptor;
     private final boolean descending;
     public LayerSortStage(StageDescriptor descriptor, boolean descending) {
