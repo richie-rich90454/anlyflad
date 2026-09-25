@@ -1,6 +1,6 @@
 # Performance
 ## What is benchmarked
-`core/src/test/java/com/vectorium/core/benchmark/VectorizationBenchmark.java` is a JMH 1.37 benchmark class. Its annotations request average time in milliseconds, one fork, one 100 ms warmup iteration, and two 100 ms measurement iterations. The setup uses a 64x64 checkerboard raster, a four-color palette, 1024 Morton values, and a 1024-point open path.
+`core/src/test/java/com/anlyflad/core/benchmark/VectorizationBenchmark.java` is a JMH 1.37 benchmark class. Its annotations request average time in milliseconds, one fork, one 100 ms warmup iteration, and two 100 ms measurement iterations. The setup uses a 64x64 checkerboard raster, a four-color palette, 1024 Morton values, and a 1024-point open path.
 The benchmark methods are:
 | Method | Work measured |
 |---|---|

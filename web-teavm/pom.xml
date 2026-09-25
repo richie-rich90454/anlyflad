@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>com.vectorium</groupId>
+        <groupId>com.anlyflad</groupId>
         <artifactId>anlyflad-parent</artifactId>
         <version>1.0.0</version>
     </parent>
@@ -12,7 +12,7 @@
     <name>Anlyflad Web</name>
     <dependencies>
         <dependency>
-            <groupId>com.vectorium</groupId>
+            <groupId>com.anlyflad</groupId>
             <artifactId>anlyflad-core</artifactId>
         </dependency>
         <dependency>
@@ -63,7 +63,7 @@
                             <goal>compile</goal>
                         </goals>
                         <configuration>
-                            <mainClass>com.vectorium.web.VectoriumWeb</mainClass>
+                            <mainClass>com.anlyflad.web.VectoriumWeb</mainClass>
                             <targetDirectory>${project.build.directory}/webapp</targetDirectory>
                             <targetFileName>anlyflad.js</targetFileName>
                             <targetType>JAVASCRIPT</targetType>

@@ -5,7 +5,7 @@ From the repository root:
 ```text
 mvn -pl web-teavm -am package
 ```
-The POM binds the TeaVM `compile` goal and the web-resource copy to `process-classes`. Its configured entry point is `com.vectorium.web.VectoriumWeb`; the target is `JAVASCRIPT`, module format `ES2015`, optimization `ADVANCED`, and minification enabled. The output directory and filenames are:
+The POM binds the TeaVM `compile` goal and the web-resource copy to `process-classes`. Its configured entry point is `com.anlyflad.web.VectoriumWeb`; the target is `JAVASCRIPT`, module format `ES2015`, optimization `ADVANCED`, and minification enabled. The output directory and filenames are:
 ```text
 web-teavm/target/webapp/index.html
 web-teavm/target/webapp/anlyflad.js
