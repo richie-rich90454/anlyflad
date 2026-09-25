@@ -21,6 +21,7 @@ import com.vectorium.core.stage.PipelineConfig;
 import com.vectorium.core.stage.RasterMode;
 import com.vectorium.core.stage.StageException;
 import com.vectorium.core.stage.StageRegistry;
+import com.vectorium.core.stage.VectorMode;
 import com.vectorium.core.svg.SvgCache;
 import com.vectorium.core.svg.SvgParseException;
 @Command(name="anlyflad", mixinStandardHelpOptions=true, version="1.0.0", description="Convert PNG, JPEG, and SVG files to SVG.")
@@ -35,6 +36,8 @@ public final class AnlyfladCli {
     private String preset="default";
     @Option(names="--mode", paramLabel="MODE", description="Raster mode: color or binary.")
     private String mode="color";
+    @Option(names="--vector-mode", paramLabel="MODE", description="Vector mode: exact, contour, or curve.")
+    private String vectorMode="contour";
     @Option(names="--no-clean", description="Disable cleaner stages.")
     private boolean noClean;
     @Option(names="--stage", paramLabel="STAGE.PARAM=VALUE", description="Override a stage parameter. Repeatable.")
@@ -121,7 +124,7 @@ public final class AnlyfladCli {
         validateOutput();
         PipelineConfig config=createConfiguration();
         VectorDocument document=new CliDocumentLoader().load(input);
-        stdout.println("Anlyflad "+config.getPresetName()+" preset, "+config.getRasterMode().getOptionName()+" raster mode");
+        stdout.println("Anlyflad "+config.getPresetName()+" preset, "+config.getRasterMode().getOptionName()+" raster mode, "+config.getVectorMode().getOptionName()+" vector mode");
         SvgCache cache=new SvgCache();
         CliLogger logger=new CliLogger(stdout);
         StageRegistry registry=new StageRegistry(logger, new BoundedPipelineMemoizer(), cache);
@@ -137,7 +140,7 @@ public final class AnlyfladCli {
     }
     private PipelineConfig createConfiguration() throws UserInputException {
         try {
-            return CliConfiguration.create(!noClean, preset, RasterMode.parse(mode), stageValues, disabledStages);
+            return CliConfiguration.create(!noClean, preset, RasterMode.parse(mode), VectorMode.parse(vectorMode), stageValues, disabledStages);
         } catch (IllegalArgumentException exception) {
             throw new UserInputException(message(exception), exception);
         }
@@ -155,6 +158,7 @@ public final class AnlyfladCli {
         output=null;
         preset="default";
         mode="color";
+        vectorMode="contour";
         noClean=false;
         stageValues.clear();
         disabledStages.clear();
