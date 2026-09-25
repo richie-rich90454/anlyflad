@@ -47,10 +47,10 @@ public final class SmoothStage implements ConfigurableStage, ColorTransformStage
         for (int index=0;index<document.getPaths().size();index++) {
             smoothed.add(smooth(document.getPaths().get(index)));
         }
-        return document.withPaths(smoothed);
+        return document.withPathsAndOwnedPixels(smoothed);
     }
     private VectorPath smooth(VectorPath path) {
-        if (passes==0||path.getNodeCount()<3) {
+        if (passes==0||path.getNodeCount()<3||path.isCompound()||path.hasCubicData()) {
             return path;
         }
         double[] coordinates=path.getCoordinates();
