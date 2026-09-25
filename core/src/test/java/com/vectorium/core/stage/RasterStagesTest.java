@@ -49,7 +49,7 @@ public final class RasterStagesTest {
         assertEquals(0xFF000000, thresholded.getOwnedPixels()[0]);
         assertEquals(0xFFFFFFFF, thresholded.getOwnedPixels()[1]);
         StageDescriptor vectorizeDescriptor=new StageDescriptor("vectorize", "Vectorize", "Creates paths", true);
-        VectorizeStage vectorize=new VectorizeStage(vectorizeDescriptor);
+        VectorizeStage vectorize=new VectorizeStage(vectorizeDescriptor, RasterMode.BINARY, 250000);
         VectorDocument output=vectorize.apply(thresholded);
         assertEquals(1, output.getPaths().size());
         assertEquals(0, output.getPaths().get(0).getId().getValue());
