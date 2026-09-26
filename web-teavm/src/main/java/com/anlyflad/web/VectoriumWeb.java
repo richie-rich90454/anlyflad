@@ -24,6 +24,9 @@ public final class VectoriumWeb {
     private WebDom.Element modeInput;
     private WebDom.Element vectorModeInput;
     private WebDom.Element scaleInput;
+    private WebDom.Element presetInput;
+    private WebDom.Element cleanInput;
+    private WebDom.Element outputScaleInput;
     private WebDom.Element runButton;
     private WebDom.Element preview;
     private WebDom.Element download;
@@ -40,6 +43,9 @@ public final class VectoriumWeb {
         modeInput=require("mode-input");
         vectorModeInput=require("vector-mode-input");
         scaleInput=require("scale-input");
+        presetInput=require("preset-input");
+        cleanInput=require("clean-input");
+        outputScaleInput=require("output-scale-input");
         runButton=require("run-button");
         preview=require("preview");
         download=require("download");
@@ -171,7 +177,20 @@ public final class VectoriumWeb {
             } catch (IllegalArgumentException exception) {
                 quality=QualityScale.DEFAULT;
             }
-            PipelineConfig config=PipelineConfig.defaults().withRasterMode(RasterMode.parse(modeInput.getValue())).withVectorMode(VectorMode.parse(vectorModeInput.getValue())).withStageValue("vectorize", "quality", Integer.toString(quality)).withStageValue("quantize", "maxColors", Integer.toString(QualityScale.maxColors(quality)));
+            String preset=presetInput.getValue();
+            if (!"default".equals(preset)&&!"clean".equals(preset)&&!"fast".equals(preset)&&!"accurate".equals(preset)) {
+                preset="default";
+            }
+            double outputScale=1.0;
+            try {
+                outputScale=Double.parseDouble(outputScaleInput.getValue());
+            } catch (NumberFormatException exception) {
+                outputScale=1.0;
+            }
+            if (!Double.isFinite(outputScale)||outputScale<=0.0||outputScale>16.0) {
+                outputScale=1.0;
+            }
+            PipelineConfig config=PipelineConfig.defaults().withPreset(preset).withClean(cleanInput.isChecked()).withRasterMode(RasterMode.parse(modeInput.getValue())).withVectorMode(VectorMode.parse(vectorModeInput.getValue())).withStageValue("vectorize", "quality", Integer.toString(quality)).withStageValue("quantize", "maxColors", Integer.toString(QualityScale.maxColors(quality))).withStageValue("vectorize", "outputScale", Double.toString(outputScale));
             Pipeline pipeline=registry.buildPipeline(config);
             VectorDocument result=pipeline.run(current, config);
             String svg=cache.get(result);
