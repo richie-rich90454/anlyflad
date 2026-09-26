@@ -105,6 +105,7 @@ public final class VectoriumFrame extends JFrame {
         toolbar.addPresetListener(new PresetListener());
         toolbar.addModeListener(new ModeListener());
         toolbar.addVectorModeListener(new VectorModeListener());
+        toolbar.addQualityListener(new QualityListener());
         toolbar.addCleanListener(new CleanListener());
         toolbar.addFitListener(new FitListener());
         toolbar.addActualSizeListener(new ActualSizeListener());
@@ -219,7 +220,7 @@ public final class VectoriumFrame extends JFrame {
     }
     private void updatePipeline() {
         PipelineConfig base=PipelineConfig.defaults().withPreset(toolbar.getPreset()).withRasterMode(toolbar.getRasterMode()).withVectorMode(toolbar.getVectorMode()).withClean(toolbar.isClean());
-        PipelineConfig configured=stageInspector.applyTo(base).withStageValue("vectorize", "mode", toolbar.getVectorMode().getOptionName());
+        PipelineConfig configured=stageInspector.applyTo(base).withStageValue("vectorize", "mode", toolbar.getVectorMode().getOptionName()).withStageValue("vectorize", "quality", toolbar.getQuality());
         controller.setConfig(configured);
         controller.runPipeline();
     }
@@ -288,6 +289,11 @@ public final class VectoriumFrame extends JFrame {
         }
     }
     private final class VectorModeListener implements ActionListener {
+        public void actionPerformed(ActionEvent event) {
+            schedulePipelineUpdate();
+        }
+    }
+    private final class QualityListener implements ActionListener {
         public void actionPerformed(ActionEvent event) {
             schedulePipelineUpdate();
         }
