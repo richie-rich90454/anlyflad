@@ -24,6 +24,7 @@ public final class DesktopToolbar extends JPanel {
     private final JComboBox<String> preset;
     private final JComboBox<String> mode;
     private final JComboBox<String> vectorMode;
+    private final JComboBox<String> quality;
     private final JCheckBox clean;
     private final JLabel modeHint;
     private final JLabel zoomLabel;
@@ -43,6 +44,8 @@ public final class DesktopToolbar extends JPanel {
         preset=new JComboBox<String>(new String[]{"default", "clean", "fast", "accurate"});
         mode=new JComboBox<String>(new String[]{RasterMode.COLOR.getOptionName(), RasterMode.BINARY.getOptionName()});
         vectorMode=new JComboBox<String>(new String[]{VectorMode.CURVE.getOptionName(), VectorMode.CONTOUR.getOptionName(), VectorMode.EXACT.getOptionName()});
+        quality=new JComboBox<String>(new String[]{"draft", "balanced", "max"});
+        quality.setSelectedItem("balanced");
         clean=new JCheckBox("Enabled", true);
         modeHint=new JLabel(" ");
         modeHint.setFont(DesktopTheme.CAPTION_FONT);
@@ -77,6 +80,7 @@ public final class DesktopToolbar extends JPanel {
         preset.setPreferredSize(new Dimension(132, 30));
         mode.setPreferredSize(new Dimension(132, 30));
         vectorMode.setPreferredSize(new Dimension(132, 30));
+        quality.setPreferredSize(new Dimension(112, 30));
         openButton.getAccessibleContext().setAccessibleName("Open image");
         exportButton.getAccessibleContext().setAccessibleName("Export SVG");
         runButton.getAccessibleContext().setAccessibleName("Run pipeline");
@@ -87,6 +91,7 @@ public final class DesktopToolbar extends JPanel {
         preset.getAccessibleContext().setAccessibleName("Pipeline preset");
         mode.getAccessibleContext().setAccessibleName("Raster mode");
         vectorMode.getAccessibleContext().setAccessibleName("Vector mode");
+        quality.getAccessibleContext().setAccessibleName("Quality scale");
         clean.getAccessibleContext().setAccessibleName("Enable clean output");
         updateModeHint();
         vectorMode.addActionListener(new java.awt.event.ActionListener() {
@@ -109,6 +114,7 @@ public final class DesktopToolbar extends JPanel {
         group.add(field("Preset", preset));
         group.add(field("Raster mode", mode));
         group.add(field("Vector mode", vectorMode));
+        group.add(field("Scale", quality));
         JPanel cleanField=new JPanel();
         cleanField.setOpaque(false);
         cleanField.setLayout(new BoxLayout(cleanField, BoxLayout.Y_AXIS));
@@ -210,6 +216,18 @@ public final class DesktopToolbar extends JPanel {
     public void addVectorModeListener(ActionListener listener) {
         vectorMode.addActionListener(listener);
     }
+    public void addQualityListener(ActionListener listener) {
+        quality.addActionListener(listener);
+    }
+    public String getQuality() {
+        return (String)quality.getSelectedItem();
+    }
+    public void setQuality(String value) {
+        if (value==null) {
+            throw new IllegalArgumentException("quality must not be null");
+        }
+        quality.setSelectedItem(value);
+    }
     public void setZoomLabel(String text) {
         zoomLabel.setText(text);
     }
@@ -229,6 +247,7 @@ public final class DesktopToolbar extends JPanel {
         preset.setEnabled(!running);
         mode.setEnabled(!running);
         vectorMode.setEnabled(!running);
+        quality.setEnabled(!running);
         clean.setEnabled(!running);
     }
     public String getPreset() {
