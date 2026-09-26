@@ -166,7 +166,11 @@ public final class StageParameterPanel extends JPanel {
         PipelineConfig updated=config;
         for (int index=0;index<stage.getParameters().size();index++) {
             ParamSpec parameter=stage.getParameters().get(index);
-            updated=updated.withStageValue(stage.getName(), parameter.getName(), getParameterValue(parameter.getName()));
+            String value=getParameterValue(parameter.getName());
+            if (value!=null&&value.equals(defaultValue(parameter))) {
+                continue;
+            }
+            updated=updated.withStageValue(stage.getName(), parameter.getName(), value);
         }
         return updated;
     }
