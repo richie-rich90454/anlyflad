@@ -49,6 +49,15 @@ public final class ColorRasterVectorizerTest {
         assertTrue(!covered[7]);
     }
     @Test
+    public void shouldSupportExactOutputBeyondTheOldPathLimit() {
+        assertTrue(ColorRasterVectorizer.DEFAULT_MAX_PATHS>250000);
+        assertTrue(ColorRasterVectorizer.MAX_PATHS>250000);
+        int[] pixels={0xFFFF0000,0xFF00FF00};
+        List<VectorPath> paths=ColorRasterVectorizer.vectorize(RasterFrame.wrap(2,1,pixels),300000);
+        assertEquals(2,paths.size());
+    }
+
+    @Test
     public void shouldEnforcePathLimitAndValidateArguments() {
         int[] pixels={0xFFFF0000, 0xFF00FF00};
         try {
