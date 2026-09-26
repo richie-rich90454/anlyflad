@@ -6,6 +6,7 @@ import java.awt.event.ItemListener;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import javax.swing.BorderFactory;
+import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -56,11 +57,26 @@ public final class StageParameterPanel extends JPanel {
         header.setOpaque(false);
         header.add(title, BorderLayout.NORTH);
         header.add(description, BorderLayout.CENTER);
+        JButton resetButton=new JButton("Reset to defaults");
+        resetButton.setFont(DesktopTheme.CAPTION_FONT);
+        resetButton.setFocusPainted(false);
+        resetButton.setBackground(DesktopTheme.SURFACE);
+        resetButton.setForeground(DesktopTheme.TEXT);
+        resetButton.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(DesktopTheme.BORDER), BorderFactory.createEmptyBorder(5, 10, 5, 10)));
+        resetButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent event) {
+                resetToDefaults();
+            }
+        });
+        JPanel footer=new JPanel(new BorderLayout(8, 0));
+        footer.setOpaque(false);
+        footer.add(resetButton, BorderLayout.WEST);
+        footer.add(validation, BorderLayout.CENTER);
         JPanel content=new JPanel(new BorderLayout());
         content.setOpaque(false);
         content.add(header, BorderLayout.NORTH);
         content.add(new JScrollPane(fields), BorderLayout.CENTER);
-        content.add(validation, BorderLayout.SOUTH);
+        content.add(footer, BorderLayout.SOUTH);
         setLayout(new BorderLayout());
         setBackground(DesktopTheme.SURFACE);
         setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
@@ -87,6 +103,13 @@ public final class StageParameterPanel extends JPanel {
         try {
             title.setText(stage.getLabel());
             description.setText(stage.getDescription());
+            if (stage.getParameters().isEmpty()) {
+                JLabel empty=new JLabel("This stage has no tunable parameters.");
+                empty.setFont(DesktopTheme.BODY_FONT);
+                empty.setForeground(DesktopTheme.MUTED_TEXT);
+                empty.setBorder(BorderFactory.createEmptyBorder(12, 0, 0, 0));
+                fields.add(empty);
+            }
             for (int index=0;index<stage.getParameters().size();index++) {
                 ParamSpec parameter=stage.getParameters().get(index);
                 parameters.put(parameter.getName(), parameter);
@@ -159,6 +182,8 @@ public final class StageParameterPanel extends JPanel {
         label.setForeground(DesktopTheme.TEXT);
         label.setPreferredSize(new Dimension(120, 28));
         row.add(label, BorderLayout.WEST);
+        JPanel editorHolder=new JPanel(new BorderLayout(0, 2));
+        editorHolder.setOpaque(false);
         if (parameter.getType()==ParamType.BOOLEAN) {
             JCheckBox editor=new JCheckBox();
             editor.setSelected(Boolean.parseBoolean(value));
@@ -167,16 +192,53 @@ public final class StageParameterPanel extends JPanel {
             editor.getAccessibleContext().setAccessibleName(parameter.getLabel());
             editor.addItemListener(new CheckHandler(parameter.getName()));
             checkBoxes.put(parameter.getName(), editor);
-            row.add(editor, BorderLayout.CENTER);
+            editorHolder.add(editor, BorderLayout.NORTH);
         } else {
             JTextField editor=new JTextField(value, 12);
             editor.setToolTipText(parameter.getDescription());
             editor.getAccessibleContext().setAccessibleName(parameter.getLabel());
             editor.getDocument().addDocumentListener(new FieldHandler(parameter.getName()));
             textFields.put(parameter.getName(), editor);
-            row.add(editor, BorderLayout.CENTER);
+            editorHolder.add(editor, BorderLayout.CENTER);
         }
+        JLabel hint=new JLabel(hint(parameter));
+        hint.setFont(DesktopTheme.CAPTION_FONT);
+        hint.setForeground(DesktopTheme.MUTED_TEXT);
+        editorHolder.add(hint, BorderLayout.SOUTH);
+        row.add(editorHolder, BorderLayout.CENTER);
         return row;
+    }
+    private static String hint(ParamSpec parameter) {
+        StringBuilder hint=new StringBuilder();
+        hint.append("Default ").append(parameter.getDefaultValue());
+        if (parameter.getMin()!=null||parameter.getMax()!=null) {
+            hint.append("  |  ");
+            hint.append(parameter.getMin()==null?"-":parameter.getMin().toString());
+            hint.append(" to ");
+            hint.append(parameter.getMax()==null?"-":parameter.getMax().toString());
+        }
+        return hint.toString();
+    }
+    public void resetToDefaults() {
+        if (stage==null) {
+            return;
+        }
+        updating=true;
+        try {
+            for (int index=0;index<stage.getParameters().size();index++) {
+                ParamSpec parameter=stage.getParameters().get(index);
+                JCheckBox checkBox=checkBoxes.get(parameter.getName());
+                if (checkBox!=null) {
+                    checkBox.setSelected(Boolean.parseBoolean(parameter.getDefaultValue().toString()));
+                } else {
+                    textFields.get(parameter.getName()).setText(parameter.getDefaultValue().toString());
+                }
+            }
+            validateParameters();
+        } finally {
+            updating=false;
+        }
+        notifyChanged();
     }
     private void validateParameters() {
         if (stage==null) {
