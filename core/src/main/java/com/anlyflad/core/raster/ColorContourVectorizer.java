@@ -58,15 +58,23 @@ public final class ColorContourVectorizer {
     }
 
     public static List<VectorPath> vectorizeSupersampled(RasterFrame frame, int maxPaths, int maxVertices) {
+        return vectorizeSupersampled(frame,maxPaths,maxVertices,0);
+    }
+
+    public static List<VectorPath> vectorizeSupersampled(RasterFrame frame, int maxPaths, int maxVertices, int supersample) {
         if (frame == null) {
             throw new IllegalArgumentException("frame must not be null");
         }
-        return traceSupersampled(frame, maxPaths, maxVertices).paths;
+        return traceSupersampled(frame, maxPaths, maxVertices, supersample).paths;
     }
 
     static Traced traceSupersampled(RasterFrame frame, int maxPaths, int maxVertices) {
+        return traceSupersampled(frame,maxPaths,maxVertices,0);
+    }
+
+    static Traced traceSupersampled(RasterFrame frame, int maxPaths, int maxVertices, int supersample) {
         validateBudgets(maxPaths, maxVertices);
-        RasterFrame sampled = RasterSupersampler.sample(frame);
+        RasterFrame sampled = RasterSupersampler.sample(frame,supersample);
         if (sampled == frame) {
             return new Traced(vectorize(frame.getWidth(), frame.getHeight(), frame.getOwnedPixels(), maxPaths, maxVertices), 1);
         }
