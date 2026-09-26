@@ -48,6 +48,7 @@ public final class StatusBar extends JPanel {
         if (value<0||maximum<=0||value>maximum) {
             throw new IllegalArgumentException("progress must satisfy 0 <= value <= maximum");
         }
+        progress.setIndeterminate(false);
         progress.setMaximum(maximum);
         progress.setValue(value);
         progress.setVisible(true);
@@ -59,9 +60,13 @@ public final class StatusBar extends JPanel {
         return progress.getMaximum();
     }
     public void setBusy(boolean busy) {
+        progress.setIndeterminate(busy);
         progress.setVisible(busy);
     }
     public boolean isBusy() {
         return progress.isVisible();
+    }
+    public boolean isProgressIndeterminate() {
+        return progress.isIndeterminate();
     }
 }
