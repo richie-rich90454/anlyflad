@@ -11,6 +11,7 @@ import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
+import java.awt.BasicStroke;
 import java.awt.geom.Path2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
@@ -257,12 +258,17 @@ public final class VectorCanvas extends JPanel {
     }
     private void drawVectorPaths(Graphics2D graphics) {
         graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        boolean raster=document.getOrigin().isRaster();
         for (int index=0;index<document.getPaths().size();index++) {
             VectorPath path=document.getPaths().get(index);
             Path2D.Double shape=shape(path);
             setPathStyle(graphics, path);
             graphics.fill(shape);
-            if (!document.getOrigin().isRaster()) {
+            if (raster&&(path.isCompound()||path.hasCubicData())) {
+                graphics.setStroke(new BasicStroke(1.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                graphics.setColor(new Color(path.getFill().getRed(), path.getFill().getGreen(), path.getFill().getBlue(), path.getFill().getAlpha()));
+                graphics.draw(shape);
+            } else if (!raster) {
                 graphics.setColor(new Color(DesktopTheme.TEXT.getRed(), DesktopTheme.TEXT.getGreen(), DesktopTheme.TEXT.getBlue(), 48));
                 graphics.draw(shape);
             }
