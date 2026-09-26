@@ -15,7 +15,6 @@ public final class ColorCurveVectorizer {
     public static final int MAX_VERTICES=ColorContourVectorizer.MAX_VERTICES;
     private static final double MIN_SIMPLIFICATION_TOLERANCE=2.0;
     private static final double MAX_SIMPLIFICATION_TOLERANCE=8.0;
-    private static final double CORNER_CUT_RADIUS=2.0;
     private static final int MAX_SMOOTHED_VERTICES=16384;
     private static final int MAX_FIT_VERTICES=16384;
     private static final double MIN_CORNER_RADIUS=0.5;
@@ -46,7 +45,8 @@ public final class ColorCurveVectorizer {
         if (frame==null) {
             throw new IllegalArgumentException("frame must not be null");
         }
-        return fitPaths(ColorContourVectorizer.vectorize(frame, maxPaths, maxVertices), tolerance);
+        ColorContourVectorizer.Traced traced=ColorContourVectorizer.traceSupersampled(frame, maxPaths, maxVertices);
+        return fitPaths(traced.paths, tolerance, traced.scale);
     }
 
     public static List<VectorPath> vectorize(int width, int height, int[] argb) {
@@ -67,7 +67,7 @@ public final class ColorCurveVectorizer {
 
     public static List<VectorPath> vectorize(int width, int height, int[] argb, double tolerance, int maxPaths, int maxVertices) {
         validateTolerance(tolerance);
-        return fitPaths(ColorContourVectorizer.vectorize(width, height, argb, maxPaths, maxVertices), tolerance);
+        return vectorize(RasterFrame.wrap(width, height, argb), tolerance, maxPaths, maxVertices);
     }
 
     public static List<VectorPath> vectorizeForeground(RasterFrame frame) {
@@ -91,7 +91,7 @@ public final class ColorCurveVectorizer {
         if (frame==null) {
             throw new IllegalArgumentException("frame must not be null");
         }
-        return fitPaths(ColorContourVectorizer.vectorizeForeground(frame, maxPaths, maxVertices), tolerance);
+        return fitPaths(ColorContourVectorizer.vectorizeForeground(frame, maxPaths, maxVertices), tolerance, 1);
     }
 
     public static List<VectorPath> vectorizeForeground(int width, int height, int[] argb) {
@@ -112,12 +112,12 @@ public final class ColorCurveVectorizer {
 
     public static List<VectorPath> vectorizeForeground(int width, int height, int[] argb, double tolerance, int maxPaths, int maxVertices) {
         validateTolerance(tolerance);
-        return fitPaths(ColorContourVectorizer.vectorizeForeground(width, height, argb, maxPaths, maxVertices), tolerance);
+        return fitPaths(ColorContourVectorizer.vectorizeForeground(width, height, argb, maxPaths, maxVertices), tolerance, 1);
     }
 
-    private static List<VectorPath> fitPaths(List<VectorPath> paths, double tolerance) {
+    private static List<VectorPath> fitPaths(List<VectorPath> paths, double tolerance, int scale) {
         List<VectorPath> fitted=new ArrayList<VectorPath>(paths.size());
-        double simplificationTolerance=rasterSimplificationTolerance(tolerance);
+        double simplificationTolerance=rasterSimplificationTolerance(tolerance, scale);
         for (int pathIndex=0;pathIndex<paths.size();pathIndex++) {
             VectorPath path=paths.get(pathIndex);
             double[][] sourceRings=path.getRingCoordinates();
@@ -138,29 +138,32 @@ public final class ColorCurveVectorizer {
         if (ring.length<6) {
             return new FittedRing(ring,flatten(lineSegments(ring)));
         }
-        double[] simplified=simplifyRing(ring,simplificationTolerance);
-        double[] polygon=cornerCut(simplified,CORNER_CUT_RADIUS);
-        polygon=cleanRing(polygon);
+        double[] polygon=simplifyRing(ring,simplificationTolerance);
         if (polygon.length<6) {
             return new FittedRing(ring,flatten(lineSegments(ring)));
         }
         if (polygon.length/2<=MAX_FIT_VERTICES) {
-            List<double[]> segments=new CubicBezierFitter(tolerance).fit(polygon);
-            double[] reduced=segmentEndpoints(segments);
-            reduced=cleanRing(reduced);
-            if (reduced.length>=6) {
-                return new FittedRing(reduced,splineSegments(reduced));
+            try {
+                List<double[]> segments=new CubicBezierFitter(tolerance).fit(polygon);
+                double[] reduced=segmentEndpoints(segments);
+                reduced=cleanRing(reduced);
+                if (reduced.length>=6) {
+                    return new FittedRing(reduced,flatten(segments));
+                }
+                return new FittedRing(polygon,flatten(segments));
+            } catch (IllegalArgumentException exception) {
+                // ponytail: per-ring fitter rejection degrades to the traced polyline instead of aborting the image
+                return new FittedRing(polygon,flatten(lineSegments(polygon)));
             }
-            return new FittedRing(polygon,flatten(segments));
         }
-        return new FittedRing(polygon,splineSegments(polygon));
+        return roundCorners(polygon,tolerance);
     }
 
-    private static double rasterSimplificationTolerance(double tolerance) {
+    private static double rasterSimplificationTolerance(double tolerance,int scale) {
         if (tolerance==0.0) {
             return 0.0;
         }
-        return Math.min(MAX_SIMPLIFICATION_TOLERANCE,Math.max(MIN_SIMPLIFICATION_TOLERANCE,tolerance*1.5));
+        return Math.min(MAX_SIMPLIFICATION_TOLERANCE,Math.max(MIN_SIMPLIFICATION_TOLERANCE/scale,tolerance*1.5));
     }
 
     private static double[] cleanRing(double[] source) {
@@ -308,65 +311,13 @@ public final class ColorCurveVectorizer {
         return Math.abs(cross)<=MIN_DISTANCE&&dot>=0.0;
     }
 
-    private static double[] cornerCut(double[] ring,double radius) {
-        int count=ring.length/2;
-        if (count<3) {
-            return ring;
-        }
-        double[] result=new double[count*2];
-        for (int index=0;index<count;index++) {
-            int next=(index+1)%count;
-            double x=ring[index*2];
-            double y=ring[index*2+1];
-            double dx=ring[next*2]-x;
-            double dy=ring[next*2+1]-y;
-            double length=Math.hypot(dx,dy);
-            double localRadius=Math.min(radius,length*0.5);
-            if (length>MIN_DISTANCE) {
-                result[index*2]=x+dx/length*localRadius;
-                result[index*2+1]=y+dy/length*localRadius;
-            } else {
-                result[index*2]=x;
-                result[index*2+1]=y;
-            }
-        }
-        return result;
-    }
-
     private static double[] segmentEndpoints(List<double[]> segments) {
-        double[] result=new double[segments.size()*2];
+        double[] result=new double[segments.size()*2+2];
+        result[0]=segments.get(0)[0];
+        result[1]=segments.get(0)[1];
         for (int index=0;index<segments.size();index++) {
-            result[index*2]=segments.get(index)[6];
-            result[index*2+1]=segments.get(index)[7];
-        }
-        return result;
-    }
-
-    private static double[] splineSegments(double[] ring) {
-        int count=ring.length/2;
-        double[] result=new double[count*8];
-        for (int index=0;index<count;index++) {
-            int previous=(index+count-1)%count;
-            int current=index;
-            int next=(index+1)%count;
-            int after=(index+2)%count;
-            double currentX=ring[current*2];
-            double currentY=ring[current*2+1];
-            double nextX=ring[next*2];
-            double nextY=ring[next*2+1];
-            double control1X=currentX+(nextX-ring[previous*2])/6.0;
-            double control1Y=currentY+(nextY-ring[previous*2+1])/6.0;
-            double control2X=nextX-(ring[after*2]-currentX)/6.0;
-            double control2Y=nextY-(ring[after*2+1]-currentY)/6.0;
-            int offset=index*8;
-            result[offset]=currentX;
-            result[offset+1]=currentY;
-            result[offset+2]=control1X;
-            result[offset+3]=control1Y;
-            result[offset+4]=control2X;
-            result[offset+5]=control2Y;
-            result[offset+6]=nextX;
-            result[offset+7]=nextY;
+            result[(index+1)*2]=segments.get(index)[6];
+            result[(index+1)*2+1]=segments.get(index)[7];
         }
         return result;
     }
