@@ -11,6 +11,7 @@ public final class VectorDocument {
     private final int height;
     private final int[] pixels;
     private final String sourceSvg;
+    private final double outputScale;
     public VectorDocument(String documentId, Origin origin, List<VectorPath> paths, int width, int height, int[] pixels) {
         this(documentId, origin, paths, width, height, pixels, null);
     }
@@ -18,6 +19,9 @@ public final class VectorDocument {
         this(documentId, origin, paths, width, height, pixels, sourceSvg, true);
     }
     private VectorDocument(String documentId, Origin origin, List<VectorPath> paths, int width, int height, int[] pixels, String sourceSvg, boolean copyPixels) {
+        this(documentId, origin, paths, width, height, pixels, sourceSvg, copyPixels, 1.0);
+    }
+    private VectorDocument(String documentId, Origin origin, List<VectorPath> paths, int width, int height, int[] pixels, String sourceSvg, boolean copyPixels, double outputScale) {
         if (documentId==null||documentId.trim().isEmpty()) {
             throw new IllegalArgumentException("documentId must not be blank");
         }
@@ -31,6 +35,9 @@ public final class VectorDocument {
             throw new IllegalArgumentException("pixels must not be null");
         }
         validateSize(width, height);
+        if (!Double.isFinite(outputScale)||outputScale<=0.0) {
+            throw new IllegalArgumentException("outputScale must be finite and positive");
+        }
         if (pixels.length!=pixelLength(width, height)) {
             throw new IllegalArgumentException("pixels length must equal width multiplied by height");
         }
@@ -49,6 +56,7 @@ public final class VectorDocument {
         this.height=height;
         this.pixels=copyPixels?Arrays.copyOf(pixels, pixels.length):pixels;
         this.sourceSvg=sourceSvg;
+        this.outputScale=outputScale;
     }
     public static VectorDocument fromOwnedPixels(String documentId, Origin origin, List<VectorPath> paths, int width, int height, int[] pixels) {
         return new VectorDocument(documentId, origin, paths, width, height, pixels, null, false);
@@ -79,6 +87,18 @@ public final class VectorDocument {
     }
     public String getSourceSvg() {
         return sourceSvg;
+    }
+    public double getOutputScale() {
+        return outputScale;
+    }
+    public VectorDocument withOutputScale(double outputScale) {
+        if (!Double.isFinite(outputScale)||outputScale<=0.0) {
+            throw new IllegalArgumentException("outputScale must be finite and positive");
+        }
+        if (outputScale==this.outputScale) {
+            return this;
+        }
+        return new VectorDocument(documentId, origin, paths, width, height, pixels, sourceSvg, false, outputScale);
     }
     public VectorDocument withPaths(List<VectorPath> paths) {
         return new VectorDocument(documentId, origin, paths, width, height, pixels);
@@ -117,7 +137,7 @@ public final class VectorDocument {
             return false;
         }
         VectorDocument document=(VectorDocument)other;
-        return width==document.width&&height==document.height&&documentId.equals(document.documentId)&&origin.equals(document.origin)&&paths.equals(document.paths)&&Arrays.equals(pixels, document.pixels)&&(sourceSvg==null?document.sourceSvg==null:sourceSvg.equals(document.sourceSvg));
+        return width==document.width&&height==document.height&&documentId.equals(document.documentId)&&origin.equals(document.origin)&&paths.equals(document.paths)&&Arrays.equals(pixels, document.pixels)&&(sourceSvg==null?document.sourceSvg==null:sourceSvg.equals(document.sourceSvg))&&Double.doubleToLongBits(outputScale)==Double.doubleToLongBits(document.outputScale);
     }
     @Override
     public int hashCode() {
@@ -129,11 +149,12 @@ public final class VectorDocument {
         result=31*result+height;
         result=31*result+Arrays.hashCode(pixels);
         result=31*result+(sourceSvg==null?0:sourceSvg.hashCode());
+        result=31*result+(int)Double.doubleToLongBits(outputScale);
         return result;
     }
     @Override
     public String toString() {
-        return "VectorDocument{documentId="+documentId+", origin="+origin+", paths="+paths+", width="+width+", height="+height+", pixelLength="+pixels.length+"}";
+        return "VectorDocument{documentId="+documentId+", origin="+origin+", paths="+paths+", width="+width+", height="+height+", pixelLength="+pixels.length+", outputScale="+outputScale+"}";
     }
     private static void validateSize(int width, int height) {
         if (width<0) {
