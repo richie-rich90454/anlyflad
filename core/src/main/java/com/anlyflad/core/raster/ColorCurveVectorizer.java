@@ -48,11 +48,15 @@ public final class ColorCurveVectorizer {
     }
 
     public static List<VectorPath> vectorize(RasterFrame frame, double tolerance, int maxPaths, int maxVertices) {
+        return vectorize(frame,tolerance,maxPaths,maxVertices,0);
+    }
+
+    public static List<VectorPath> vectorize(RasterFrame frame, double tolerance, int maxPaths, int maxVertices, int supersample) {
         validateTolerance(tolerance);
         if (frame==null) {
             throw new IllegalArgumentException("frame must not be null");
         }
-        ColorContourVectorizer.Traced traced=ColorContourVectorizer.traceSupersampled(frame, maxPaths, maxVertices);
+        ColorContourVectorizer.Traced traced=ColorContourVectorizer.traceSupersampled(frame, maxPaths, maxVertices, supersample);
         return fitPaths(traced.paths, tolerance, traced.scale);
     }
 
