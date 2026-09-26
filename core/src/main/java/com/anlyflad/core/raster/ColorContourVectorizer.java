@@ -57,6 +57,30 @@ public final class ColorContourVectorizer {
         return vectorize(width, height, argb, maxPaths, maxVertices, true);
     }
 
+    public static List<VectorPath> vectorizeSupersampled(RasterFrame frame, int maxPaths, int maxVertices) {
+        if (frame == null) {
+            throw new IllegalArgumentException("frame must not be null");
+        }
+        return traceSupersampled(frame, maxPaths, maxVertices).paths;
+    }
+
+    static Traced traceSupersampled(RasterFrame frame, int maxPaths, int maxVertices) {
+        validateBudgets(maxPaths, maxVertices);
+        RasterFrame sampled = RasterSupersampler.sample(frame);
+        if (sampled == frame) {
+            return new Traced(vectorize(frame.getWidth(), frame.getHeight(), frame.getOwnedPixels(), maxPaths, maxVertices), 1);
+        }
+        int scale = sampled.getWidth() / frame.getWidth();
+        long sampledBudget = Math.min((long) MAX_VERTICES, (long) maxVertices * (long) scale);
+        try {
+            List<VectorPath> paths = vectorize(sampled.getWidth(), sampled.getHeight(), sampled.getOwnedPixels(), maxPaths, (int) sampledBudget);
+            return new Traced(RasterSupersampler.scaleBack(paths, scale), scale);
+        } catch (ResourceLimitException exception) {
+            // ponytail: complex rasters may only fit their budget at source resolution, so retry there
+            return new Traced(vectorize(frame.getWidth(), frame.getHeight(), frame.getOwnedPixels(), maxPaths, maxVertices), 1);
+        }
+    }
+
     private static List<VectorPath> vectorize(int width, int height, int[] argb, int maxPaths, int maxVertices, boolean foregroundOnly) {
         int pixelCount = pixelLength(width, height, argb);
         validateBudgets(maxPaths, maxVertices);
@@ -391,7 +415,7 @@ public final class ColorContourVectorizer {
         return (int) length;
     }
 
-    private static void validateBudgets(int maxPaths, int maxVertices) {
+    static void validateBudgets(int maxPaths, int maxVertices) {
         if (maxPaths <= 0 || maxPaths > MAX_PATHS) {
             throw new IllegalArgumentException("maxPaths must be between 1 and " + MAX_PATHS);
         }
@@ -438,6 +462,16 @@ public final class ColorContourVectorizer {
 
         public long getRequired() {
             return required;
+        }
+    }
+
+    static final class Traced {
+        final List<VectorPath> paths;
+        final int scale;
+
+        private Traced(List<VectorPath> paths, int scale) {
+            this.paths = paths;
+            this.scale = scale;
         }
     }
 
