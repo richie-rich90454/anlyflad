@@ -214,7 +214,16 @@ public final class VectoriumFrame extends JFrame {
         about.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent event) {
                 JOptionPane.showMessageDialog(VectoriumFrame.this,
-                    "Anlyflad\nRaster and SVG vectorization.\n\nUse File > Open to load an image, then export the result as SVG.",
+                    "Anlyflad 1.0.0\n"
+                    + "Composition-first raster and SVG vectorization studio.\n\n"
+                    + "Author: Richard Jiang\n"
+                    + "License: MIT\n\n"
+                    + "Raster modes: Color, Binary\n"
+                    + "Vector modes: Exact runs, Contour, Curves\n"
+                    + "Quality scale: 0 (smallest) to 100 (most detailed)\n"
+                    + "Output settings: supersample 0-4, output scale 0.1-16\n\n"
+                    + "Workflow: File > Open a PNG, JPEG, or SVG, tune the toolbar and stage inspector, then File > Export SVG.\n\n"
+                    + "Runtime: Java " + System.getProperty("java.version") + " on " + System.getProperty("os.name"),
                     "About Anlyflad", JOptionPane.INFORMATION_MESSAGE);
             }
         });
