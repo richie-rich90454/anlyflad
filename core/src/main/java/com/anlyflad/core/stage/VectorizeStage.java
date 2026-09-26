@@ -8,12 +8,6 @@ import com.anlyflad.core.raster.ColorRasterVectorizer;
 import com.anlyflad.core.raster.RasterFrame;
 import com.anlyflad.core.raster.RasterVectorizer;
 public final class VectorizeStage implements ConfigurableStage {
-    public static final String QUALITY_DRAFT="draft";
-    public static final String QUALITY_BALANCED="balanced";
-    public static final String QUALITY_MAX="max";
-    private static final double DRAFT_TOLERANCE=1.5;
-    private static final double MAX_TOLERANCE=0.2;
-    private static final int DRAFT_SUPERSAMPLE=1;
     private static final int MAX_SUPERSAMPLE=4;
     private static final double MAX_OUTPUT_SCALE=16.0;
     private final StageDescriptor descriptor;
@@ -22,20 +16,20 @@ public final class VectorizeStage implements ConfigurableStage {
     private final int maxPaths;
     private final int maxVertices;
     private final double curveTolerance;
-    private final String quality;
+    private final int quality;
     private final int supersample;
     private final double outputScale;
     public VectorizeStage(StageDescriptor descriptor) {
-        this(descriptor, RasterMode.COLOR, VectorMode.CURVE, ColorRasterVectorizer.DEFAULT_MAX_PATHS, ColorContourVectorizer.DEFAULT_MAX_VERTICES, ColorCurveVectorizer.DEFAULT_TOLERANCE, QUALITY_BALANCED, 0, 1.0);
+        this(descriptor, RasterMode.COLOR, VectorMode.CURVE, ColorRasterVectorizer.DEFAULT_MAX_PATHS, ColorContourVectorizer.DEFAULT_MAX_VERTICES, ColorCurveVectorizer.DEFAULT_TOLERANCE, "balanced", 0, 1.0);
     }
     public VectorizeStage(StageDescriptor descriptor, RasterMode rasterMode, int maxPaths) {
-        this(descriptor, rasterMode, VectorMode.CURVE, maxPaths, ColorContourVectorizer.DEFAULT_MAX_VERTICES, ColorCurveVectorizer.DEFAULT_TOLERANCE, QUALITY_BALANCED, 0, 1.0);
+        this(descriptor, rasterMode, VectorMode.CURVE, maxPaths, ColorContourVectorizer.DEFAULT_MAX_VERTICES, ColorCurveVectorizer.DEFAULT_TOLERANCE, "balanced", 0, 1.0);
     }
     public VectorizeStage(StageDescriptor descriptor, RasterMode rasterMode, VectorMode vectorMode, int maxPaths, int maxVertices) {
-        this(descriptor, rasterMode, vectorMode, maxPaths, maxVertices, ColorCurveVectorizer.DEFAULT_TOLERANCE, QUALITY_BALANCED, 0, 1.0);
+        this(descriptor, rasterMode, vectorMode, maxPaths, maxVertices, ColorCurveVectorizer.DEFAULT_TOLERANCE, "balanced", 0, 1.0);
     }
     public VectorizeStage(StageDescriptor descriptor, RasterMode rasterMode, VectorMode vectorMode, int maxPaths, int maxVertices, double curveTolerance) {
-        this(descriptor, rasterMode, vectorMode, maxPaths, maxVertices, curveTolerance, QUALITY_BALANCED, 0, 1.0);
+        this(descriptor, rasterMode, vectorMode, maxPaths, maxVertices, curveTolerance, "balanced", 0, 1.0);
     }
     public VectorizeStage(StageDescriptor descriptor, RasterMode rasterMode, VectorMode vectorMode, int maxPaths, int maxVertices, double curveTolerance, String quality, int supersample, double outputScale) {
         if (descriptor==null) {
@@ -56,7 +50,7 @@ public final class VectorizeStage implements ConfigurableStage {
         if (!Double.isFinite(curveTolerance)||curveTolerance<0.0) {
             throw new IllegalArgumentException("curveTolerance must be finite and nonnegative");
         }
-        requireQuality(quality);
+        int parsedQuality=QualityScale.parse(quality);
         if (supersample<0||supersample>MAX_SUPERSAMPLE) {
             throw new IllegalArgumentException("supersample must be between 0 and "+MAX_SUPERSAMPLE);
         }
@@ -69,7 +63,7 @@ public final class VectorizeStage implements ConfigurableStage {
         this.maxPaths=maxPaths;
         this.maxVertices=maxVertices;
         this.curveTolerance=curveTolerance;
-        this.quality=quality;
+        this.quality=parsedQuality;
         this.supersample=supersample;
         this.outputScale=outputScale;
     }
@@ -89,17 +83,16 @@ public final class VectorizeStage implements ConfigurableStage {
         }
         int configuredMaxVertices=config.getInteger(descriptor.getName(), "maxVertices", maxVertices);
         boolean qualityConfigured=config.getString(descriptor.getName(), "quality", null)!=null;
-        String configuredQuality=config.getString(descriptor.getName(), "quality", quality);
-        requireQuality(configuredQuality);
+        int configuredQuality=QualityScale.parse(config.getString(descriptor.getName(), "quality", Integer.toString(quality)));
         boolean toleranceConfigured=config.getString(descriptor.getName(), "curveTolerance", null)!=null;
         double configuredCurveTolerance=config.getDouble(descriptor.getName(), "curveTolerance", curveTolerance);
         if (qualityConfigured&&!toleranceConfigured) {
-            configuredCurveTolerance=toleranceForQuality(configuredQuality);
+            configuredCurveTolerance=QualityScale.curveTolerance(configuredQuality);
         }
         boolean supersampleConfigured=config.getString(descriptor.getName(), "supersample", null)!=null;
         int configuredSupersample=config.getInteger(descriptor.getName(), "supersample", supersample);
         if (qualityConfigured&&!supersampleConfigured) {
-            configuredSupersample=supersampleForQuality(configuredQuality);
+            configuredSupersample=QualityScale.supersample(configuredQuality);
         }
         if (configuredSupersample<0||configuredSupersample>MAX_SUPERSAMPLE) {
             throw new IllegalArgumentException("supersample must be between 0 and "+MAX_SUPERSAMPLE);
@@ -109,10 +102,10 @@ public final class VectorizeStage implements ConfigurableStage {
         if (outputScaleConfigured&&(!Double.isFinite(configuredOutputScale)||configuredOutputScale<=0.0||configuredOutputScale>MAX_OUTPUT_SCALE)) {
             throw new IllegalArgumentException("outputScale must be between 0 and "+MAX_OUTPUT_SCALE);
         }
-        if (configuredMode==rasterMode&&configuredVectorMode==vectorMode&&configuredMaxPaths==maxPaths&&configuredMaxVertices==maxVertices&&Double.doubleToLongBits(configuredCurveTolerance)==Double.doubleToLongBits(curveTolerance)&&configuredQuality.equals(quality)&&configuredSupersample==supersample&&Double.doubleToLongBits(configuredOutputScale)==Double.doubleToLongBits(outputScale)) {
+        if (configuredMode==rasterMode&&configuredVectorMode==vectorMode&&configuredMaxPaths==maxPaths&&configuredMaxVertices==maxVertices&&Double.doubleToLongBits(configuredCurveTolerance)==Double.doubleToLongBits(curveTolerance)&&configuredQuality==quality&&configuredSupersample==supersample&&Double.doubleToLongBits(configuredOutputScale)==Double.doubleToLongBits(outputScale)) {
             return this;
         }
-        return new VectorizeStage(descriptor, configuredMode, configuredVectorMode, configuredMaxPaths, configuredMaxVertices, configuredCurveTolerance, configuredQuality, configuredSupersample, configuredOutputScale);
+        return new VectorizeStage(descriptor, configuredMode, configuredVectorMode, configuredMaxPaths, configuredMaxVertices, configuredCurveTolerance, Integer.toString(configuredQuality), configuredSupersample, configuredOutputScale);
     }
     public String getName() {
         return descriptor.getName();
@@ -177,28 +170,5 @@ public final class VectorizeStage implements ConfigurableStage {
             }
         }
         return paths;
-    }
-    private static void requireQuality(String quality) {
-        if (!QUALITY_DRAFT.equals(quality)&&!QUALITY_BALANCED.equals(quality)&&!QUALITY_MAX.equals(quality)) {
-            throw new IllegalArgumentException("quality must be draft, balanced, or max");
-        }
-    }
-    private static double toleranceForQuality(String quality) {
-        if (QUALITY_DRAFT.equals(quality)) {
-            return DRAFT_TOLERANCE;
-        }
-        if (QUALITY_MAX.equals(quality)) {
-            return MAX_TOLERANCE;
-        }
-        return ColorCurveVectorizer.DEFAULT_TOLERANCE;
-    }
-    private static int supersampleForQuality(String quality) {
-        if (QUALITY_DRAFT.equals(quality)) {
-            return DRAFT_SUPERSAMPLE;
-        }
-        if (QUALITY_MAX.equals(quality)) {
-            return MAX_SUPERSAMPLE;
-        }
-        return 0;
     }
 }
