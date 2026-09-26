@@ -129,6 +129,15 @@
           </select>
           <p class="hint" id="vector-hint"><b>Curves</b> fits smooth Béziers — smallest output. <b>Contour</b> traces region outlines — crisp edges. <b>Exact runs</b> reproduces every pixel run — pixel-perfect, largest output.</p>
         </div>
+        <div class="field">
+          <label for="scale-input">Quality scale</label>
+          <select id="scale-input" aria-describedby="scale-hint">
+            <option value="draft">Draft — smallest</option>
+            <option value="balanced" selected>Balanced</option>
+            <option value="max">Max — smoothest</option>
+          </select>
+          <p class="hint" id="scale-hint"><b>Draft</b> reduces supersampling and simplifies curves. <b>Balanced</b> is the default. <b>Max</b> supersamples 4x with the tightest tolerance.</p>
+        </div>
       </section>
       <section class="block" aria-labelledby="run-heading">
         <h2 id="run-heading"><span class="step">03</span>Vectorize</h2>
