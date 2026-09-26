@@ -14,6 +14,7 @@ import com.anlyflad.core.model.VectorDocument;
 import com.anlyflad.core.model.VectorPath;
 import com.anlyflad.core.svg.SvgCache;
 import com.anlyflad.core.svg.SvgParser;
+import com.anlyflad.core.svg.SvgWriter;
 public final class RasterModePipelineTest {
     @Test
     public void shouldPreserveColorsAndSkipDestructiveStages() throws Exception {
@@ -92,6 +93,18 @@ public final class RasterModePipelineTest {
         assertTrue(curve.getPaths().size()<=2);
         assertEquals(3, exact.getPaths().size());
         assertArrayEquals(pixels, exact.getOwnedPixels());
+    }
+    @Test
+    public void shouldApplyOutputScaleAndQualityToCurveOutput() throws Exception {
+        int[] pixels={0xFFFF0000, 0xFF00FF00, 0xFF0000FF, 0xFFFFFF00};
+        VectorDocument input=new VectorDocument("raster.png", new RasterOrigin("raster.png"), Collections.<VectorPath>emptyList(), 4, 1, pixels);
+        PipelineConfig scaled=PipelineConfig.defaults().withVectorMode(VectorMode.CURVE).withStageValue("vectorize", "outputScale", "2").withStageValue("vectorize", "quality", "max");
+        VectorDocument output=buildAndRun(input, scaled);
+        assertEquals(4, output.getWidth());
+        assertEquals(1, output.getHeight());
+        assertEquals(2.0, output.getOutputScale(), 0.0);
+        assertTrue(output.getPaths().size()>0);
+        assertTrue(SvgWriter.write(output).contains("width=\"8\""));
     }
     @Test
     public void shouldNotApplyVertexBudgetToExactRuns() throws Exception {
