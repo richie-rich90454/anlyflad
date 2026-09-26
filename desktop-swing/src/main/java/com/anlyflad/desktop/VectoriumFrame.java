@@ -20,6 +20,7 @@ import javax.swing.JPanel;
 import javax.swing.JSplitPane;
 import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import com.anlyflad.core.model.VectorDocument;
 import com.anlyflad.core.stage.PipelineConfig;
@@ -33,6 +34,7 @@ public final class VectoriumFrame extends JFrame {
     private final StatusBar statusBar;
     private final JSplitPane splitPane;
     private final PipelineController controller;
+    private final Timer pipelineDebounce;
     public VectoriumFrame() {
         super("Anlyflad");
         canvas=new VectorCanvas();
@@ -40,6 +42,12 @@ public final class VectoriumFrame extends JFrame {
         stageInspector=new StageInspectorPanel(new StageRegistry(), PipelineConfig.defaults());
         statusBar=new StatusBar();
         controller=new PipelineController(canvas, statusBar);
+        pipelineDebounce=new Timer(220, new ActionListener() {
+            public void actionPerformed(ActionEvent event) {
+                updatePipeline();
+            }
+        });
+        pipelineDebounce.setRepeats(false);
         splitPane=new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, canvas, stageInspector);
         splitPane.setResizeWeight(0.74);
         splitPane.setDividerLocation(840);
@@ -76,7 +84,7 @@ public final class VectoriumFrame extends JFrame {
         });
         stageInspector.setChangeListener(new Runnable() {
             public void run() {
-                updatePipeline();
+                schedulePipelineUpdate();
             }
         });
         canvas.addPropertyChangeListener("zoom", new PropertyChangeListener() {
@@ -222,29 +230,33 @@ public final class VectoriumFrame extends JFrame {
             }
         }
     }
+    private void schedulePipelineUpdate() {
+        pipelineDebounce.restart();
+    }
     private final class RunListener implements ActionListener {
         public void actionPerformed(ActionEvent event) {
+            pipelineDebounce.stop();
             updatePipeline();
         }
     }
     private final class PresetListener implements ActionListener {
         public void actionPerformed(ActionEvent event) {
-            updatePipeline();
+            schedulePipelineUpdate();
         }
     }
     private final class ModeListener implements ActionListener {
         public void actionPerformed(ActionEvent event) {
-            updatePipeline();
+            schedulePipelineUpdate();
         }
     }
     private final class CleanListener implements ActionListener {
         public void actionPerformed(ActionEvent event) {
-            updatePipeline();
+            schedulePipelineUpdate();
         }
     }
     private final class VectorModeListener implements ActionListener {
         public void actionPerformed(ActionEvent event) {
-            updatePipeline();
+            schedulePipelineUpdate();
         }
     }
     private final class FitListener implements ActionListener {
@@ -276,6 +288,7 @@ public final class VectoriumFrame extends JFrame {
             this.frame=frame;
         }
         public void windowClosing(WindowEvent event) {
+            frame.pipelineDebounce.stop();
             frame.getController().close();
         }
         public void windowOpened(WindowEvent event) {
