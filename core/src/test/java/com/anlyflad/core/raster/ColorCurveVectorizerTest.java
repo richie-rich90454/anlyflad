@@ -8,6 +8,7 @@ import java.awt.geom.Path2D;
 import java.awt.image.BufferedImage;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -101,6 +102,52 @@ public final class ColorCurveVectorizerTest {
     @Test
     public void shouldRejectInvalidTolerance() {
         assertThrows(IllegalArgumentException.class,() -> ColorCurveVectorizer.vectorize(1,1,new int[]{RED},Double.NaN));
+    }
+
+    @Test
+    public void shouldProduceIdenticalGeometryInAnyTaskOrder() {
+        int width=24;
+        int height=24;
+        int[] pixels=new int[width*height];
+        for (int y=0;y<height;y++) {
+            for (int x=0;x<width;x++) {
+                if ((x/4+y/4)%2==0) {
+                    pixels[y*width+x]=RED;
+                }
+            }
+        }
+        List<VectorPath> forward=ColorCurveVectorizer.vectorize(width,height,pixels,0.5);
+        ColorCurveVectorizer.setParallelRunner(new ParallelRunner() {
+            public void run(int taskCount,Task task) {
+                for (int index=taskCount-1;index>=0;index--) {
+                    task.run(index);
+                }
+            }
+        });
+        try {
+            List<VectorPath> reverse=ColorCurveVectorizer.vectorize(width,height,pixels,0.5);
+            assertGeometryEquals(forward,reverse);
+        } finally {
+            ColorCurveVectorizer.setParallelRunner(null);
+        }
+    }
+
+    private static void assertGeometryEquals(List<VectorPath> first,List<VectorPath> second) {
+        assertEquals(first.size(),second.size());
+        for (int pathIndex=0;pathIndex<first.size();pathIndex++) {
+            VectorPath firstPath=first.get(pathIndex);
+            VectorPath secondPath=second.get(pathIndex);
+            assertEquals(firstPath.getRingCount(),secondPath.getRingCount());
+            for (int ringIndex=0;ringIndex<firstPath.getRingCount();ringIndex++) {
+                assertArrayEquals(firstPath.getRing(ringIndex),secondPath.getRing(ringIndex),0.0);
+            }
+            double[][] firstCubic=firstPath.getCubicRingCoordinates();
+            double[][] secondCubic=secondPath.getCubicRingCoordinates();
+            assertEquals(firstCubic.length,secondCubic.length);
+            for (int ringIndex=0;ringIndex<firstCubic.length;ringIndex++) {
+                assertArrayEquals(firstCubic[ringIndex],secondCubic[ringIndex],0.0);
+            }
+        }
     }
 
     @Test
