@@ -24,20 +24,27 @@ public final class StageInspectorPanel extends JPanel {
                 parameterPanel.setStage(stageList.getSelectedStage(), currentConfig);
             }
         });
-        JLabel title=new JLabel("Pipeline");
-        title.setFont(DesktopTheme.DISPLAY_FONT);
+        JLabel eyebrow=new JLabel("PIPELINE");
+        eyebrow.setFont(DesktopTheme.CAPTION_FONT);
+        eyebrow.setForeground(DesktopTheme.ACCENT);
+        JLabel title=new JLabel("Stages");
+        title.setFont(DesktopTheme.TITLE_FONT);
         title.setForeground(DesktopTheme.TEXT);
         JLabel detail=new JLabel("Select a stage to tune its parameters.");
         detail.setFont(DesktopTheme.BODY_FONT);
         detail.setForeground(DesktopTheme.MUTED_TEXT);
-        JPanel heading=new JPanel(new BorderLayout());
+        JPanel heading=new JPanel(new BorderLayout(0, 2));
         heading.setOpaque(false);
         heading.setBorder(BorderFactory.createEmptyBorder(16, 16, 12, 16));
-        heading.add(title, BorderLayout.NORTH);
-        heading.add(detail, BorderLayout.SOUTH);
-        JSplitPane split=new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, stageList, parameterPanel);
-        split.setResizeWeight(0.38);
-        split.setDividerLocation(210);
+        heading.add(eyebrow, BorderLayout.NORTH);
+        JPanel titles=new JPanel(new BorderLayout());
+        titles.setOpaque(false);
+        titles.add(title, BorderLayout.NORTH);
+        titles.add(detail, BorderLayout.SOUTH);
+        heading.add(titles, BorderLayout.CENTER);
+        JSplitPane split=new JSplitPane(JSplitPane.VERTICAL_SPLIT, stageList, parameterPanel);
+        split.setResizeWeight(0.5);
+        split.setDividerLocation(300);
         split.setContinuousLayout(true);
         split.setOneTouchExpandable(true);
         split.setBorder(null);
@@ -48,7 +55,7 @@ public final class StageInspectorPanel extends JPanel {
         setLayout(new BorderLayout());
         setBackground(DesktopTheme.SURFACE);
         setBorder(BorderFactory.createMatteBorder(0, 1, 0, 0, DesktopTheme.BORDER));
-        setPreferredSize(new Dimension(500, 600));
+        setPreferredSize(new Dimension(420, 600));
         add(content, BorderLayout.CENTER);
         parameterPanel.setStage(stageList.getSelectedStage(), config);
     }
