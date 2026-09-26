@@ -16,6 +16,8 @@ public final class WebDom {
     public interface Element extends JSObject {
         @JSMethod
         void addEventListener(String type, EventListener listener);
+        @JSMethod
+        void click();
         @JSProperty
         void setTextContent(String value);
         @JSProperty
@@ -26,6 +28,10 @@ public final class WebDom {
         void setHref(String value);
         @JSProperty
         void setDownload(String value);
+        @JSProperty
+        void setDisabled(boolean value);
+        @JSProperty
+        void setClassName(String value);
         @JSProperty
         FileList getFiles();
         @JSProperty
@@ -71,6 +77,10 @@ public final class WebDom {
     public interface RasterCallback extends JSObject {
         void accept(int width, int height, ImageData data, int sourceWidth, int sourceHeight, String error);
     }
+    @JSFunctor
+    public interface Callback extends JSObject {
+        void run();
+    }
     @JSBody(params={}, script="return document;")
     public static native Document document();
     @JSBody(params={"file","callback"}, script="var reader = new FileReader(); reader.onload = function(){callback(reader.result, '');}; reader.onerror = function(){callback('', 'Could not read the file.');}; reader.readAsText(file);")
@@ -81,8 +91,20 @@ public final class WebDom {
     public static native String encodeUri(String value);
     @JSBody(params={"value"}, script="var blob=new Blob([value],{type:'image/svg+xml'}); return URL.createObjectURL(blob);")
     public static native String createObjectUrl(String value);
+    @JSBody(params={"file"}, script="return URL.createObjectURL(file);")
+    public static native String objectUrl(File file);
     @JSBody(params={"value"}, script="URL.revokeObjectURL(value);")
     public static native void revokeObjectUrl(String value);
+    @JSBody(params={"image","container"}, script="var width=image.naturalWidth||0; var height=image.naturalHeight||0; if (width<=0||height<=0) { return 1; } var availableWidth=(container.clientWidth||0)-32; var availableHeight=(container.clientHeight||0)-32; if (availableWidth<=0||availableHeight<=0) { return 1; } var zoom=Math.max(0.1, Math.min(16, Math.min(availableWidth/width, availableHeight/height))); image.style.maxWidth='none'; image.style.width=(width*zoom)+'px'; image.style.height=(height*zoom)+'px'; return zoom;")
+    public static native double fitPreview(Element image, Element container);
+    @JSBody(params={"image"}, script="var width=image.naturalWidth||0; if (width<=0) { return 1; } image.style.maxWidth='none'; image.style.width=width+'px'; image.style.height='auto'; return 1;")
+    public static native double previewActualSize(Element image);
+    @JSBody(params={"image","factor"}, script="var width=image.naturalWidth||0; if (width<=0) { return 1; } var current=image.clientWidth||width; var zoom=Math.max(0.1, Math.min(16, (current/width)*factor)); image.style.maxWidth='none'; image.style.width=(width*zoom)+'px'; image.style.height='auto'; return zoom;")
+    public static native double previewZoomBy(Element image, double factor);
+    @JSBody(params={"element","percent"}, script="element.style.width = percent + '%';")
+    public static native void setWidthPercent(Element element, int percent);
+    @JSBody(params={"callback"}, script="setTimeout(function(){callback();}, 0);")
+    public static native void defer(Callback callback);
     private WebDom() {
     }
 }
