@@ -103,7 +103,7 @@ public final class VectorizeStage implements ConfigurableStage {
             if (rasterMode==RasterMode.BINARY) {
                 return document.withPathsAndOwnedPixels(ColorContourVectorizer.vectorizeForeground(frame, maxPaths, maxVertices));
             }
-            return document.withPathsAndOwnedPixels(ColorContourVectorizer.vectorize(frame, maxPaths, maxVertices));
+            return document.withPathsAndOwnedPixels(ColorContourVectorizer.vectorizeSupersampled(frame, maxPaths, maxVertices));
         } catch (IllegalArgumentException exception) {
             String message=exception.getMessage();
             if (message==null||message.trim().isEmpty()) {
