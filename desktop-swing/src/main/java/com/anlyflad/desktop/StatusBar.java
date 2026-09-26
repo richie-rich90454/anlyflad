@@ -7,9 +7,13 @@ import javax.swing.JProgressBar;
 public final class StatusBar extends JPanel {
     private static final long serialVersionUID=1L;
     private final JLabel status;
+    private final JLabel detail;
     private final JProgressBar progress;
     public StatusBar() {
         status=new JLabel("Ready");
+        detail=new JLabel("No image loaded");
+        detail.setFont(DesktopTheme.CAPTION_FONT);
+        detail.setForeground(DesktopTheme.MUTED_TEXT);
         status.setFont(DesktopTheme.BODY_FONT);
         status.setForeground(DesktopTheme.TEXT);
         status.getAccessibleContext().setAccessibleName("Application status");
@@ -21,7 +25,8 @@ public final class StatusBar extends JPanel {
         setLayout(new BorderLayout(12, 0));
         setBackground(DesktopTheme.SURFACE);
         setBorder(BorderFactory.createCompoundBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, DesktopTheme.BORDER), BorderFactory.createEmptyBorder(8, 12, 8, 12)));
-        add(status, BorderLayout.CENTER);
+        add(status, BorderLayout.WEST);
+        add(detail, BorderLayout.CENTER);
         add(progress, BorderLayout.EAST);
     }
     public void setStatus(String text) {
@@ -32,6 +37,12 @@ public final class StatusBar extends JPanel {
     }
     public String getStatusText() {
         return status.getText();
+    }
+    public void setDetail(String text) {
+        detail.setText(text==null||text.trim().isEmpty()?" ":text);
+    }
+    public String getDetailText() {
+        return detail.getText();
     }
     public void setProgress(int value, int maximum) {
         if (value<0||maximum<=0||value>maximum) {
