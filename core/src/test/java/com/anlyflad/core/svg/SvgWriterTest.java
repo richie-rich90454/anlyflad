@@ -52,15 +52,25 @@ public final class SvgWriterTest {
         assertEquals(4.0, parsed.getPaths().get(0).getCoordinates()[3], 0.0);
     }
     @Test
-    public void shouldPreserveRasterColorsAndRequestCrispEdges() throws Exception {
-        VectorPath path=new VectorPath(PathId.zero(), new double[]{0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0}, true, new Color(10, 20, 30, 128), 1.0);
+    public void shouldPreserveRasterColorsAndSealRegionEdges() throws Exception {
+        VectorPath path=new VectorPath(PathId.zero(), java.util.Collections.singletonList(new double[]{0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0}), new Color(10, 20, 30, 128), 1.0, VectorPath.FillRule.EVEN_ODD);
         VectorDocument document=new VectorDocument("raster.png", new RasterOrigin("raster.png"), java.util.Collections.singletonList(path), 1, 1, new int[]{0x800A141E});
         String output=SvgWriter.write(document);
-        assertTrue(output.contains("shape-rendering=\"crispEdges\""));
+        assertFalse(output.contains("shape-rendering=\"crispEdges\""));
         assertTrue(output.contains("fill=\"#0a141e\""));
         assertTrue(output.contains("fill-opacity=\"0.5019607843137255\""));
+        assertTrue(output.contains("stroke=\"#0a141e\""));
+        assertTrue(output.contains("stroke-width=\"1\""));
         assertWellFormed(output);
         assertEquals(1, new SvgParser().parse("output.svg", output).getPaths().size());
+    }
+    @Test
+    public void shouldKeepExactRasterRunsUnstroked() throws Exception {
+        VectorPath path=new VectorPath(PathId.zero(), new double[]{0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0}, true, new Color(10, 20, 30, 255), 1.0);
+        VectorDocument document=new VectorDocument("raster.png", new RasterOrigin("raster.png"), java.util.Collections.singletonList(path), 1, 1, new int[]{0xFF0A141E});
+        String output=SvgWriter.write(document);
+        assertFalse(output.contains("stroke="));
+        assertWellFormed(output);
     }
     @Test
     public void shouldPreserveParsedSvgSourceForColorPassthrough() throws Exception {
