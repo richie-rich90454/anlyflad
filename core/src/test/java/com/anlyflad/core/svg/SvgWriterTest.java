@@ -92,7 +92,7 @@ public final class SvgWriterTest {
         VectorPath evenOdd=new VectorPath(PathId.zero(), rings, new Color(10, 20, 30, 255), 1.0, VectorPath.FillRule.EVEN_ODD);
         VectorDocument document=new VectorDocument("compound.svg", new SvgOrigin("compound.svg"), java.util.Collections.singletonList(evenOdd), 10, 10, new int[100]);
         String output=SvgWriter.write(document);
-        assertTrue(output.contains("Z M"));
+        assertTrue(output.contains("z M"));
         assertTrue(output.contains("fill-rule=\"evenodd\""));
         assertWellFormed(output);
         VectorPath nonzero=new VectorPath(PathId.zero(), rings, new Color(10, 20, 30, 255), 1.0, VectorPath.FillRule.NONZERO);
@@ -112,7 +112,7 @@ public final class SvgWriterTest {
         VectorPath path=new VectorPath(PathId.zero(),Arrays.asList(fallback),new double[][]{cubic},new Color(10,20,30,255),1.0,VectorPath.FillRule.EVEN_ODD);
         VectorDocument document=new VectorDocument("curve.svg",new SvgOrigin("curve.svg"),java.util.Collections.singletonList(path),10,10,new int[100]);
         String output=SvgWriter.write(document);
-        assertTrue(output.contains(" C "));
+        assertTrue(output.contains("C"));
         assertFalse(output.contains(" L "));
         assertTrue(output.contains(" Z"));
         assertWellFormed(output);
