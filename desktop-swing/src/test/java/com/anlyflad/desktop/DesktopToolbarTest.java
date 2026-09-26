@@ -12,13 +12,16 @@ public final class DesktopToolbarTest {
         assertEquals("default", toolbar.getPreset());
         assertEquals(RasterMode.COLOR, toolbar.getRasterMode());
         assertEquals(VectorMode.CURVE, toolbar.getVectorMode());
+        assertEquals("balanced", toolbar.getQuality());
         assertTrue(toolbar.isClean());
         toolbar.setPreset("accurate");
         toolbar.setRasterMode(RasterMode.BINARY);
+        toolbar.setQuality("max");
         toolbar.setClean(false);
         toolbar.setExportEnabled(true);
         assertEquals("accurate", toolbar.getPreset());
         assertEquals(RasterMode.BINARY, toolbar.getRasterMode());
+        assertEquals("max", toolbar.getQuality());
         assertFalse(toolbar.isClean());
     }
 }
