@@ -49,7 +49,7 @@ A graphical environment is required. The window provides a menu bar with Open/Ex
 ```text
 mvn -pl web-teavm -am package
 ```
-Host `web-teavm/target/webapp` as static files. The page accepts `.png`, `.jpg`, `.jpeg`, and `.svg`, provides raster mode, vector mode, and a 0-100 quality slider, previews the generated SVG in an object URL, and offers `anlyflad.svg` as a download. `index.html` imports the generated ES module and calls `main()`; the page also ships `favicon.svg`, a multi-size `favicon.ico`, PNG favicons, an Apple touch icon, manifest icons, and `site.webmanifest`. No project server is provided; any static host works.
+Host `web-teavm/target/webapp` as static files. The page accepts `.png`, `.jpg`, `.jpeg`, and `.svg`, provides raster mode, vector mode, a 0-100 quality slider, a pipeline preset, a cleanup toggle, and an output scale, previews the generated SVG in an object URL, and offers `anlyflad.svg` as a download. `index.html` imports the generated ES module and calls `main()`; the page also ships `favicon.svg`, a multi-size `favicon.ico`, PNG favicons, an Apple touch icon, manifest icons, and `site.webmanifest`. No project server is provided; any static host works.
 ## Modules
 | Module | Responsibility |
 |---|---|
@@ -85,4 +85,4 @@ Core stages are synchronous and deterministic. Raster supersampling rows and per
 - The `hole-fix` descriptor advertises a zero minimum, while the implementation requires a positive `maxArea`.
 See [architecture](docs/architecture.md), [performance](docs/performance.md), and [TeaVM notes](docs/teavm.md) for implementation details and verification commands.
 ## License
-MIT. See [LICENSE](LICENSE).
+MIT. Author: Richard Jiang. See [LICENSE](LICENSE).

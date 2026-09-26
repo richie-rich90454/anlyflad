@@ -42,7 +42,7 @@ The core SVG parser is a manual scanner over the source string, and the path par
 ## Browser behavior
 - The file input advertises `.png`, `.jpg`, `.jpeg`, and `.svg`; the adapter uses the first selected file, invalidates stale asynchronous selections, and enforces a 1 GiB file-size limit.
 - PNG/JPEG data is decoded through a browser image and canvas, then stored with its source alpha byte; SVG is read as text and parsed by `SvgParser`. Decoded raster images are limited to 100 megapixels.
-- Color mode is selected by default and vector mode defaults to Curves. The quality slider is passed through as `vectorize.quality` plus a matching `quantize.maxColors` value, so 0 gives the smallest SVG and 100 the most detailed.
+- Color mode is selected by default and vector mode defaults to Curves. The quality slider is passed through as `vectorize.quality` plus a matching `quantize.maxColors` value, so 0 gives the smallest SVG and 100 the most detailed. Pipeline preset, cleanup toggle, and output scale are also exposed, matching the desktop feature set; the page footer credits author Richard Jiang.
 - The adapter creates a fresh `SvgCache` and bounded pipeline memoizer for each conversion, serializes the result, previews it through a browser object URL, and assigns the same URL to the `anlyflad.svg` download.
 - Conversion and serialization are synchronous inside the change/click handlers; the page has no Web Worker or progress protocol.
 - Favicons and the manifest are shipped from `src/main/webapp`, copied unchanged into `target/webapp`, and linked from the page head with legacy ICO, SVG, PNG, Apple touch, and manifest entries.
