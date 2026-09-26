@@ -70,7 +70,7 @@ public final class AnlyfladCliTest {
         assertTrue(output.isFile());
         errorBytes.reset();
         assertEquals(1, command.execute(input.getAbsolutePath(), "-o", output.getAbsolutePath(), "--scale", "nope"));
-        assertTrue(errorBytes.toString("UTF-8").contains("scale must be draft, balanced, or max"));
+        assertTrue(errorBytes.toString("UTF-8").contains("quality must be"));
     }
     @Test
     public void shouldExposeVersionNoCleanAndRejectInvalidConfiguration() throws Exception {
