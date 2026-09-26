@@ -7,6 +7,7 @@ import com.anlyflad.core.model.VectorDocument;
 import com.anlyflad.core.model.VectorPath;
 public final class SvgWriter {
     public static final int MAX_OUTPUT_BYTES=1024*1024*1024;
+    private static final double COORDINATE_SCALE=100.0;
     private static final char[] HEX={'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
     public SvgWriter() {
     }
@@ -24,11 +25,17 @@ public final class SvgWriter {
         if (document.getPaths().size()<Integer.MAX_VALUE/64) {
             estimatedSize+=document.getPaths().size()*64;
         }
+        double outputScale=document.getOutputScale();
+        long outputWidth=Math.round(document.getWidth()*outputScale);
+        long outputHeight=Math.round(document.getHeight()*outputScale);
+        if (outputWidth<1L||outputHeight<1L||outputWidth>Integer.MAX_VALUE||outputHeight>Integer.MAX_VALUE) {
+            throw new IllegalArgumentException("scaled output size is outside the supported range");
+        }
         StringBuilder output=new StringBuilder(estimatedSize);
         output.append("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"");
-        output.append(document.getWidth());
+        output.append(outputWidth);
         output.append("\" height=\"");
-        output.append(document.getHeight());
+        output.append(outputHeight);
         output.append("\" viewBox=\"0 0 ");
         output.append(document.getWidth());
         output.append(' ');
@@ -121,15 +128,20 @@ public final class SvgWriter {
         appendHex(output, fill.getRed());
         appendHex(output, fill.getGreen());
         appendHex(output, fill.getBlue());
-        output.append("\" fill-opacity=\"");
-        appendNumber(output, fill.getAlpha()/255.0*path.getOpacity());
+        double opacity=fill.getAlpha()/255.0*path.getOpacity();
+        if (opacity<1.0) {
+            output.append("\" fill-opacity=\"");
+            appendScalar(output, opacity);
+        }
         if (seal) {
             output.append("\" stroke=\"#");
             appendHex(output, fill.getRed());
             appendHex(output, fill.getGreen());
             appendHex(output, fill.getBlue());
-            output.append("\" stroke-opacity=\"");
-            appendNumber(output, fill.getAlpha()/255.0*path.getOpacity());
+            if (opacity<1.0) {
+                output.append("\" stroke-opacity=\"");
+                appendScalar(output, opacity);
+            }
             output.append("\" stroke-width=\"1\" stroke-linejoin=\"round");
         }
         output.append("\"/>");
@@ -143,7 +155,7 @@ public final class SvgWriter {
         output.append(' ');
         appendNumber(output, segments[1]);
         for (int offset=0;offset<segments.length;offset+=8) {
-            output.append(" C ");
+            output.append('C');
             appendNumber(output, segments[offset+2]);
             output.append(' ');
             appendNumber(output, segments[offset+3]);
@@ -165,12 +177,16 @@ public final class SvgWriter {
         }
     }
     private static void appendRing(StringBuilder output, double[] coordinates, boolean closed) {
+        if (closed&&isAxisAlignedRectangle(coordinates)) {
+            appendRectangle(output, coordinates);
+            return;
+        }
         output.append('M');
         appendNumber(output, coordinates[0]);
         output.append(' ');
         appendNumber(output, coordinates[1]);
         for (int index=2;index<coordinates.length;index+=2) {
-            output.append(" L ");
+            output.append('L');
             appendNumber(output, coordinates[index]);
             output.append(' ');
             appendNumber(output, coordinates[index+1]);
@@ -186,9 +202,85 @@ public final class SvgWriter {
             output.append(" Z");
         }
     }
+    private static boolean isAxisAlignedRectangle(double[] coordinates) {
+        if (coordinates.length!=8) {
+            return false;
+        }
+        double minimumX=coordinates[0];
+        double maximumX=coordinates[0];
+        double minimumY=coordinates[1];
+        double maximumY=coordinates[1];
+        for (int index=2;index<8;index+=2) {
+            minimumX=Math.min(minimumX,coordinates[index]);
+            maximumX=Math.max(maximumX,coordinates[index]);
+            minimumY=Math.min(minimumY,coordinates[index+1]);
+            maximumY=Math.max(maximumY,coordinates[index+1]);
+        }
+        if (minimumX==maximumX||minimumY==maximumY) {
+            return false;
+        }
+        for (int index=0;index<8;index+=2) {
+            double x=coordinates[index];
+            double y=coordinates[index+1];
+            if ((x!=minimumX&&x!=maximumX)||(y!=minimumY&&y!=maximumY)) {
+                return false;
+            }
+        }
+        for (int index=0;index<4;index++) {
+            int next=(index+1)%4;
+            double x=coordinates[index*2];
+            double y=coordinates[index*2+1];
+            double nextX=coordinates[next*2];
+            double nextY=coordinates[next*2+1];
+            if (x!=nextX&&y!=nextY) {
+                return false;
+            }
+        }
+        return true;
+    }
+    private static void appendRectangle(StringBuilder output, double[] coordinates) {
+        double minimumX=coordinates[0];
+        double maximumX=coordinates[0];
+        double minimumY=coordinates[1];
+        double maximumY=coordinates[1];
+        for (int index=2;index<8;index+=2) {
+            minimumX=Math.min(minimumX,coordinates[index]);
+            maximumX=Math.max(maximumX,coordinates[index]);
+            minimumY=Math.min(minimumY,coordinates[index+1]);
+            maximumY=Math.max(maximumY,coordinates[index+1]);
+        }
+        double width=maximumX-minimumX;
+        double height=maximumY-minimumY;
+        output.append('M');
+        appendNumber(output,minimumX);
+        output.append(' ');
+        appendNumber(output,minimumY);
+        output.append('h');
+        appendNumber(output,width);
+        output.append('v');
+        appendNumber(output,height);
+        output.append('h');
+        appendNumber(output,-width);
+        output.append('z');
+    }
     private static void appendNumber(StringBuilder output, double value) {
         if (!Double.isFinite(value)) {
             throw new IllegalArgumentException("path coordinates must be finite");
+        }
+        double rounded=Math.rint(value*COORDINATE_SCALE)/COORDINATE_SCALE;
+        if (rounded==0.0) {
+            output.append('0');
+            return;
+        }
+        if (rounded==Math.rint(rounded)&&Math.abs(rounded)<=9007199254740992.0) {
+            output.append((long)rounded);
+            return;
+        }
+        output.append(rounded);
+    }
+    private static void appendScalar(StringBuilder output, double value) {
+        if (!Double.isFinite(value)) {
+            throw new IllegalArgumentException("opacity must be finite");
         }
         if (value==0.0) {
             output.append('0');
