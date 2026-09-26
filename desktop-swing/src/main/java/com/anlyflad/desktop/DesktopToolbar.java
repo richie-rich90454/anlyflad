@@ -10,6 +10,7 @@ import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JSlider;
 import com.anlyflad.core.stage.RasterMode;
 import com.anlyflad.core.stage.VectorMode;
 public final class DesktopToolbar extends JPanel {
@@ -24,7 +25,7 @@ public final class DesktopToolbar extends JPanel {
     private final JComboBox<String> preset;
     private final JComboBox<String> mode;
     private final JComboBox<String> vectorMode;
-    private final JComboBox<String> quality;
+    private final JSlider quality;
     private final JCheckBox clean;
     private final JLabel modeHint;
     private final JLabel zoomLabel;
@@ -44,8 +45,7 @@ public final class DesktopToolbar extends JPanel {
         preset=new JComboBox<String>(new String[]{"default", "clean", "fast", "accurate"});
         mode=new JComboBox<String>(new String[]{RasterMode.COLOR.getOptionName(), RasterMode.BINARY.getOptionName()});
         vectorMode=new JComboBox<String>(new String[]{VectorMode.CURVE.getOptionName(), VectorMode.CONTOUR.getOptionName(), VectorMode.EXACT.getOptionName()});
-        quality=new JComboBox<String>(new String[]{"draft", "balanced", "max"});
-        quality.setSelectedItem("balanced");
+        quality=new JSlider(0, 100, 50);
         clean=new JCheckBox("Enabled", true);
         modeHint=new JLabel(" ");
         modeHint.setFont(DesktopTheme.CAPTION_FONT);
@@ -80,7 +80,12 @@ public final class DesktopToolbar extends JPanel {
         preset.setPreferredSize(new Dimension(132, 30));
         mode.setPreferredSize(new Dimension(132, 30));
         vectorMode.setPreferredSize(new Dimension(132, 30));
-        quality.setPreferredSize(new Dimension(112, 30));
+        quality.setPreferredSize(new Dimension(170, 44));
+        quality.setBackground(DesktopTheme.SURFACE);
+        quality.setMajorTickSpacing(50);
+        quality.setMinorTickSpacing(10);
+        quality.setPaintTicks(true);
+        quality.setPaintLabels(true);
         openButton.getAccessibleContext().setAccessibleName("Open image");
         exportButton.getAccessibleContext().setAccessibleName("Export SVG");
         runButton.getAccessibleContext().setAccessibleName("Run pipeline");
@@ -92,6 +97,7 @@ public final class DesktopToolbar extends JPanel {
         mode.getAccessibleContext().setAccessibleName("Raster mode");
         vectorMode.getAccessibleContext().setAccessibleName("Vector mode");
         quality.getAccessibleContext().setAccessibleName("Quality scale");
+        quality.setToolTipText("0 = smallest SVG, 100 = most detailed SVG");
         clean.getAccessibleContext().setAccessibleName("Enable clean output");
         updateModeHint();
         vectorMode.addActionListener(new java.awt.event.ActionListener() {
@@ -216,17 +222,18 @@ public final class DesktopToolbar extends JPanel {
     public void addVectorModeListener(ActionListener listener) {
         vectorMode.addActionListener(listener);
     }
-    public void addQualityListener(ActionListener listener) {
-        quality.addActionListener(listener);
+    public void addQualityListener(final ActionListener listener) {
+        quality.addChangeListener(new javax.swing.event.ChangeListener() {
+            public void stateChanged(javax.swing.event.ChangeEvent event) {
+                listener.actionPerformed(new java.awt.event.ActionEvent(quality, java.awt.event.ActionEvent.ACTION_PERFORMED, Integer.toString(quality.getValue())));
+            }
+        });
     }
-    public String getQuality() {
-        return (String)quality.getSelectedItem();
+    public int getQuality() {
+        return quality.getValue();
     }
-    public void setQuality(String value) {
-        if (value==null) {
-            throw new IllegalArgumentException("quality must not be null");
-        }
-        quality.setSelectedItem(value);
+    public void setQuality(int value) {
+        quality.setValue(value);
     }
     public void setZoomLabel(String text) {
         zoomLabel.setText(text);
