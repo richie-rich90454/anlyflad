@@ -94,6 +94,15 @@ public final class RasterModePipelineTest {
         assertArrayEquals(pixels, exact.getOwnedPixels());
     }
     @Test
+    public void shouldNotApplyVertexBudgetToExactRuns() throws Exception {
+        int[] pixels={0xFFFF0000, 0xFF00FF00, 0xFF0000FF};
+        VectorDocument input=new VectorDocument("raster.png", new RasterOrigin("raster.png"), Collections.<VectorPath>emptyList(), 3, 1, pixels);
+        PipelineConfig config=PipelineConfig.defaults().withStageValue("vectorize", "maxVertices", "1").withVectorMode(VectorMode.EXACT);
+        VectorDocument exact=buildAndRun(input, config);
+        assertEquals(3, exact.getPaths().size());
+        assertArrayEquals(pixels, exact.getOwnedPixels());
+    }
+    @Test
     public void shouldPassThroughSvgSourceInColorMode() throws Exception {
         String source="<svg width='20' height='10'><rect width='10' height='5' fill='red' stroke='blue'/><text x='1' y='8'>label</text></svg>";
         VectorDocument input=new SvgParser().parse("input.svg", source);
