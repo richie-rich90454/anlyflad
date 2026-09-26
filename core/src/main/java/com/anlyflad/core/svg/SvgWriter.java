@@ -34,12 +34,13 @@ public final class SvgWriter {
         output.append(' ');
         output.append(document.getHeight());
         output.append('"');
-        if (document.getOrigin().isRaster()&&!hasCubicData(document)) {
-            output.append(" shape-rendering=\"crispEdges\"");
-        }
         output.append(">");
+        boolean raster=document.getOrigin().isRaster();
         for (int index=0;index<document.getPaths().size();index++) {
-            appendPath(output, document.getPaths().get(index));
+            VectorPath path=document.getPaths().get(index);
+            // Traced regions share subpixel boundaries, so a 1px stroke (half a pixel per side) seals rendering seams without widening exact runs, which stay unsealed.
+            boolean seal=raster&&(path.isCompound()||path.hasCubicData());
+            appendPath(output, path, seal);
             if (output.length()>MAX_OUTPUT_BYTES) {
                 throw new IllegalArgumentException("serialized SVG exceeds the 1 GiB output limit");
             }
@@ -97,15 +98,7 @@ public final class SvgWriter {
         }
         return (int)length;
     }
-    private static boolean hasCubicData(VectorDocument document) {
-        for (int index=0;index<document.getPaths().size();index++) {
-            if (document.getPaths().get(index).hasCubicData()) {
-                return true;
-            }
-        }
-        return false;
-    }
-    private static void appendPath(StringBuilder output, VectorPath path) {
+    private static void appendPath(StringBuilder output, VectorPath path, boolean seal) {
         List<double[]> rings=path.getRings();
         double[][] cubicRings=path.getCubicRingCoordinates();
         output.append("<path d=\"");
@@ -130,6 +123,15 @@ public final class SvgWriter {
         appendHex(output, fill.getBlue());
         output.append("\" fill-opacity=\"");
         appendNumber(output, fill.getAlpha()/255.0*path.getOpacity());
+        if (seal) {
+            output.append("\" stroke=\"#");
+            appendHex(output, fill.getRed());
+            appendHex(output, fill.getGreen());
+            appendHex(output, fill.getBlue());
+            output.append("\" stroke-opacity=\"");
+            appendNumber(output, fill.getAlpha()/255.0*path.getOpacity());
+            output.append("\" stroke-width=\"1\" stroke-linejoin=\"round");
+        }
         output.append("\"/>");
     }
     private static void appendCubicRing(StringBuilder output, double[] segments, boolean closed) {
