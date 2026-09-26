@@ -14,229 +14,297 @@
 <meta name="msapplication-TileColor" content="#25231f">
 <title>Anlyflad — raster &amp; SVG vectorizer</title>
 <style>
+  @font-face{font-family:'Noto Sans';src:url('fonts/NotoSans-400.woff2') format('woff2');font-weight:400;font-style:normal;font-display:swap}
+  @font-face{font-family:'Noto Sans';src:url('fonts/NotoSans-500.woff2') format('woff2');font-weight:500;font-style:normal;font-display:swap}
+  @font-face{font-family:'Noto Sans';src:url('fonts/NotoSans-700.woff2') format('woff2');font-weight:700;font-style:normal;font-display:swap}
   *{box-sizing:border-box}
   :root{
-    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    font-family:'Noto Sans',sans-serif;
     color-scheme:light;
-    --ink:#25231f;
     --paper:#f3f0e8;
-    --panel:#fffcf6;
-    --line:#b8b1a4;
+    --surface:#fffcf6;
+    --surface-alt:#f7f3ea;
+    --canvas:#d8d4ca;
+    --ink:#25231f;
     --muted:#6f6a61;
+    --border:#b8b1a4;
     --accent:#d65a31;
-    --accent-deep:#c04d26;
-    --rail-line:rgba(243,240,232,.16);
-    --rail-muted:#b7b0a3;
-    --stage:#f6f3ea;
+    --accent-hover:#b94724;
+    --accent-soft:#f3ded6;
     --stage-check:#e8e3d7;
+    --mono:'Noto Sans',sans-serif;
     background:var(--paper);
   }
-  body{margin:0;padding:0 0 48px;background:var(--paper);color:var(--ink)}
-  .wrap{max-width:1180px;margin:0 auto;padding:0 20px}
+  html,body{margin:0;padding:0}
+  body{background:var(--paper);color:var(--ink)}
   h1,h2,p{margin:0}
   :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   .visually-hidden{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
 
-  .masthead{display:flex;flex-wrap:wrap;align-items:flex-end;gap:6px 22px;padding:30px 0 18px;border-bottom:1px solid var(--line)}
-  .masthead h1{font:800 clamp(30px,5vw,44px)/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:-.02em}
-  .masthead h1::before{content:"";display:inline-block;width:.42em;height:.42em;margin-right:.2em;background:var(--accent);vertical-align:.04em}
-  .tagline{color:var(--muted);font-size:15px;padding-bottom:5px}
+  .app{height:100vh;display:grid;grid-template-rows:auto auto minmax(0,1fr) auto;background:var(--paper)}
 
-  .workspace{display:grid;gap:20px;padding-top:22px}
-  @media (min-width:960px){
-    .workspace{grid-template-columns:minmax(330px,390px) minmax(0,1fr);align-items:start}
-  }
+  .menubar{display:flex;align-items:center;gap:2px;padding:3px 8px;background:var(--surface);border-bottom:1px solid var(--border)}
+  .menu{position:relative}
+  .menu>summary{list-style:none;cursor:pointer;padding:6px 11px;font-size:13px;border-radius:2px;user-select:none}
+  .menu>summary::-webkit-details-marker{display:none}
+  .menu>summary:hover{background:var(--surface-alt)}
+  .menu[open]>summary{background:var(--accent-soft)}
+  .menu-items{position:absolute;top:100%;left:0;z-index:30;min-width:210px;display:flex;flex-direction:column;padding:4px;background:var(--surface);border:1px solid var(--border);box-shadow:0 10px 26px rgba(37,35,31,.18)}
+  .menu-item{display:block;width:100%;padding:7px 10px;border:0;background:transparent;color:var(--ink);font:400 13px/1.3 inherit;font-family:inherit;text-align:left;text-decoration:none;cursor:pointer}
+  .menu-item:hover{background:var(--accent-soft)}
 
-  .rail{background:var(--ink);color:var(--paper);border-radius:2px;padding:4px 22px 22px;color-scheme:dark}
-  .block{padding:20px 0;border-bottom:1px solid var(--rail-line)}
-  .block:last-child{border-bottom:0;padding-bottom:0}
-  .block h2{font:600 11.5px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.16em;text-transform:uppercase;color:#cfc9bc;display:flex;align-items:baseline;gap:10px;margin-bottom:14px}
-  .step{color:var(--accent);font-weight:700}
+  .toolbar{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 14px 8px}
+  .toolbar-row{display:flex;align-items:flex-end;gap:16px 18px;flex-wrap:wrap}
+  .group{display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap}
+  .group-settings{flex:1 1 auto}
+  .group-view{margin-left:auto}
+  .field{display:flex;flex-direction:column;gap:4px}
+  .caption{font:400 11px/1.3 var(--mono);color:var(--muted)}
+  select,.number-input{border:1px solid var(--border);border-radius:2px;background:#fff;color:var(--ink);font:inherit;font-size:13px;padding:5px 7px}
+  .number-input{width:80px}
+  .button{border:1px solid transparent;border-radius:2px;padding:8px 14px;background:var(--surface);color:var(--ink);font:600 13px/1.1 inherit;font-family:inherit;cursor:pointer}
+  .button:active:not(:disabled){transform:translateY(1px)}
+  .button:disabled{opacity:.4;cursor:not-allowed}
+  .button-primary{background:var(--accent);color:#fff;min-width:126px}
+  .button-primary:hover:not(:disabled){background:var(--accent-hover)}
+  .button-ink{background:var(--ink);color:var(--paper);min-width:84px}
+  .button-ink:hover:not(:disabled){background:#3a372f}
+  .button-secondary{border-color:var(--border)}
+  .button-secondary:hover:not(:disabled){background:var(--surface-alt)}
+  .zoom-button{min-width:38px;padding:6px 10px}
+  .zoom-label{font:700 12px/1 var(--mono);min-width:52px;text-align:center;align-self:center}
+  .check{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600}
+  .check input{width:16px;height:16px;accent-color:var(--accent);margin:0}
 
-  .dropzone{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:28px 18px;border:2px dashed rgba(243,240,232,.32);border-radius:2px;text-align:center;cursor:pointer;transition:border-color .15s,background-color .15s}
-  .dropzone svg{width:30px;height:30px;color:#8f887b;transition:color .15s}
-  .dropzone strong{font-size:16px}
-  .dropzone span{font-size:13px;color:var(--rail-muted)}
-  .dropzone:hover{border-color:rgba(214,90,49,.75)}
-  .dropzone:hover svg{color:var(--accent)}
-  .dropzone.is-dragover{border-color:var(--accent);background:rgba(214,90,49,.15)}
-  .dropzone.is-dragover svg{color:var(--accent)}
-  .dropzone:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+  .quality-row{display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap}
+  .quality-row input[type=range]{flex:1 1 260px;min-width:160px;margin:0;accent-color:var(--accent)}
+  .quality-value{font:700 13px/1 var(--mono);min-width:3ch;text-align:right}
+  .mode-hint{margin-top:3px;font:400 11px/1.4 var(--mono);color:var(--muted)}
 
-  .field{margin-bottom:16px}
-  .field:last-child{margin-bottom:0}
-  .field>label{display:block;font-weight:600;font-size:14px;margin-bottom:6px}
-  select{width:100%;border:1px solid #5c574d;border-radius:2px;padding:9px 10px;background:#1a1815;color:var(--paper);font:inherit}
-  input[type=range]{width:100%;margin:6px 0 2px;accent-color:var(--accent)}
-  input[type=number]{width:100%;border:1px solid #5c574d;border-radius:2px;padding:9px 10px;background:#1a1815;color:var(--paper);font:inherit}
-  .scale-readout{font:600 13px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#e9e3d6}
-  .check{display:flex;align-items:center;gap:9px;font-weight:600;font-size:14px}
-  .check input{width:18px;height:18px;accent-color:var(--accent)}
-  .hint{margin-top:8px;font-size:12.5px;line-height:1.55;color:var(--rail-muted)}
-  .hint b{color:#e9e3d6;font-weight:600}
-
-  #run-button{width:100%;border:0;border-radius:2px;padding:13px 18px;font:inherit;font-size:19px;font-weight:800;cursor:pointer;background:var(--accent);color:#fff;transition:background-color .15s}
-  #run-button:hover{background:var(--accent-deep)}
-  #run-button:active{transform:translateY(1px)}
-  .download{display:block;width:100%;margin-top:10px;padding:11px 16px;border:1px solid rgba(243,240,232,.4);border-radius:2px;text-align:center;font-weight:600;font-size:14.5px;color:var(--paper);text-decoration:none;transition:border-color .15s}
-  .download:hover{border-color:var(--paper)}
-  #download[href=""]{opacity:.4;pointer-events:none}
-
-  .status{margin-top:16px;padding:10px 12px;border-left:3px solid var(--accent);background:rgba(243,240,232,.05);font:400 12.5px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#e6e0d4;overflow-wrap:anywhere}
-
-  .preview-panel{background:var(--panel);border:1px solid var(--line);border-radius:2px;padding:16px}
-  .preview-panel h2{font:600 11.5px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
-  .panel-note{font-size:12px;color:var(--muted);margin-bottom:12px}
-  .stage{display:flex;height:clamp(320px,68vh,860px);overflow:auto;padding:16px;border:1px solid var(--line);background-color:var(--stage);background-image:linear-gradient(45deg,var(--stage-check) 25%,transparent 25%),linear-gradient(-45deg,var(--stage-check) 25%,transparent 25%),linear-gradient(45deg,transparent 75%,var(--stage-check) 75%),linear-gradient(-45deg,transparent 75%,var(--stage-check) 75%);background-size:24px 24px;background-position:0 0,0 12px,12px -12px,-12px 0}
-  #preview{display:none;margin:auto;max-width:100%;height:auto;border:1px solid var(--line)}
+  .workspace{display:grid;grid-template-columns:minmax(0,74fr) minmax(300px,26fr);min-height:0}
+  .stage{position:relative;display:flex;overflow:auto;padding:16px;background-color:var(--canvas);background-image:linear-gradient(45deg,var(--stage-check) 25%,transparent 25%),linear-gradient(-45deg,var(--stage-check) 25%,transparent 25%),linear-gradient(45deg,transparent 75%,var(--stage-check) 75%),linear-gradient(-45deg,transparent 75%,var(--stage-check) 75%);background-size:24px 24px;background-position:0 0,0 12px,12px -12px,-12px 0}
+  .stage.is-dragover{box-shadow:inset 0 0 0 2px var(--accent)}
+  #preview{display:none;margin:auto;max-width:100%;height:auto;border:1px solid var(--border)}
   #preview[src]:not([src=""]){display:block}
-  #preview[src]:not([src=""])+ .empty{display:none}
-  .empty{margin:auto;max-width:36ch;color:var(--muted);font-size:14px;line-height:1.6;text-align:center}
-  .about{margin-top:34px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:13px;line-height:1.7}
+  #preview[src]:not([src=""]) ~ .empty{display:none}
+  .empty{margin:auto;max-width:36ch;text-align:center;color:var(--muted);font-size:14px;line-height:1.6}
+  .download-link{position:absolute;top:12px;right:12px;z-index:5;padding:7px 12px;background:var(--surface);border:1px solid var(--border);font:600 12px/1 var(--mono);color:var(--ink);text-decoration:none}
+  .download-link:hover{background:var(--surface-alt)}
+  .download-link[href=""]{display:none}
+
+  .inspector{display:flex;flex-direction:column;min-height:0;overflow:auto;background:var(--surface);border-left:1px solid var(--border)}
+  .inspector-head{padding:16px 16px 12px}
+  .eyebrow{font:400 11px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--accent)}
+  .inspector-head h2{font-size:22px;line-height:1.2;margin-top:2px}
+  .inspector-head p{margin-top:4px;font-size:13px;color:var(--muted)}
+  .stage-rows{display:flex;flex-direction:column;margin:0 16px;border:1px solid var(--border)}
+  .stage-row{padding:6px 10px;border:0;border-bottom:1px solid var(--border);background:var(--surface);color:var(--ink);font:400 13px/1.6 inherit;font-family:inherit;text-align:left;cursor:pointer}
+  .stage-row:last-child{border-bottom:0}
+  .stage-row:nth-child(even){background:var(--surface-alt)}
+  .stage-row:hover{background:var(--accent-soft)}
+  .stage-row.is-selected{background:var(--accent-soft);font-weight:600}
+  .param-panel{display:flex;flex-direction:column;gap:10px;padding:14px 16px 16px;border-top:1px solid var(--border)}
+  .param-panel[hidden]{display:none}
+  .param-enabled{font:400 12px/1.4 var(--mono);color:var(--ink)}
+  .stage-desc{font-size:13px;line-height:1.5;color:var(--muted)}
+  .param-field{display:flex;flex-direction:column;gap:3px}
+  .param-label{font-size:12px;font-weight:600}
+  .param-field input[type=text]{width:100%;border:1px solid var(--border);border-radius:2px;background:#fff;color:var(--ink);font:inherit;font-size:13px;padding:6px 8px}
+  .param-hint{font:400 11px/1.4 var(--mono);color:var(--muted)}
+  .panel-footer{display:flex;padding-top:2px}
+  .reset-button{border:1px solid var(--border);border-radius:2px;background:var(--surface);color:var(--ink);font:400 11px/1.2 var(--mono);padding:6px 10px;cursor:pointer}
+  .reset-button:hover{background:var(--surface-alt)}
+
+  .statusbar{display:flex;align-items:center;gap:14px;min-height:34px;padding:8px 12px;background:var(--surface);border-top:1px solid var(--border)}
+  #status{flex:0 1 auto;max-width:45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
+  #detail{flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;font:400 11px/1.4 var(--mono);color:var(--muted)}
+  .progress{flex:0 0 auto;width:180px;height:8px;border:1px solid var(--border);background:var(--surface-alt);overflow:hidden}
+  .progress-fill{width:0;height:100%;background:var(--accent)}
+  .progress.is-busy .progress-fill{width:40%;animation:progress-slide 1.1s linear infinite}
+  @keyframes progress-slide{0%{transform:translateX(-100%)}100%{transform:translateX(350%)}}
+
+  .about{padding:18px 20px 26px;border-top:1px solid var(--border);background:var(--paper);color:var(--muted);font-size:13px;line-height:1.7}
   .about strong{color:var(--ink)}
 
+  @media (max-width:900px){
+    .app{height:auto;min-height:100vh}
+    .workspace{grid-template-columns:1fr}
+    .stage{min-height:320px}
+    .inspector{border-left:0;border-top:1px solid var(--border)}
+    .group-view{margin-left:0}
+  }
   @media (prefers-reduced-motion:reduce){
-    *{transition:none!important}
+    *{transition:none!important;animation-duration:.01ms!important;animation-iteration-count:1!important}
   }
 </style>
 </head>
 <body>
-<main class="wrap">
-  <header class="masthead">
-    <h1>Anlyflad</h1>
-    <p class="tagline">Raster and SVG vectorization in your browser — up to 100 megapixels, up to 1 GiB per file.</p>
-  </header>
-  <div class="workspace">
-    <section class="rail" aria-label="Vectorization controls">
-      <section class="block" aria-labelledby="source-heading">
-        <h2 id="source-heading"><span class="step">01</span>Source</h2>
-        <label class="dropzone" id="dropzone" for="file-input">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3v11"/><path d="m7 10 5 5 5-5"/><path d="M4 19h16"/></svg>
-          <strong>Drop an image here</strong>
-          <span>PNG, JPEG, or SVG — or click to browse</span>
-          <input class="visually-hidden" id="file-input" type="file" accept=".png,.jpg,.jpeg,.svg" aria-describedby="file-hint">
-        </label>
-        <p class="hint" id="file-hint">Image files up to 1 GiB · SVG files up to 1 GiB · raster images up to 100 megapixels at full resolution.</p>
-      </section>
-      <section class="block" aria-labelledby="modes-heading">
-        <h2 id="modes-heading"><span class="step">02</span>Modes</h2>
-        <div class="field">
-          <label for="mode-input">Raster mode</label>
-          <select id="mode-input" aria-describedby="raster-hint">
-            <option value="color">Color</option>
-            <option value="binary">Binary</option>
-          </select>
-          <p class="hint" id="raster-hint"><b>Color</b> keeps the full palette. <b>Binary</b> thresholds to black shapes on white. Applies to PNG/JPEG input; SVG input skips this.</p>
-        </div>
-        <div class="field">
-          <label for="vector-mode-input">Vector mode</label>
-          <select id="vector-mode-input" aria-describedby="vector-hint">
-            <option value="curve">Curves</option>
-            <option value="contour">Contour</option>
-            <option value="exact">Exact runs</option>
-          </select>
-          <p class="hint" id="vector-hint"><b>Curves</b> fits smooth Béziers — smallest output. <b>Contour</b> traces region outlines — crisp edges. <b>Exact runs</b> reproduces every pixel run — pixel-perfect, largest output.</p>
-        </div>
-        <div class="field">
-          <label for="scale-input">Quality scale</label>
-          <input id="scale-input" type="range" min="0" max="100" step="1" value="50" aria-describedby="scale-hint">
-          <div class="scale-readout"><span id="scale-value">50</span> / 100</div>
-          <p class="hint" id="scale-hint">0 gives the smallest SVG (fewer colors, no supersampling, simpler curves). 100 gives the largest, most detailed SVG (32 colors, 4x supersampling, tightest curve fit).</p>
-        </div>
-        <div class="field">
-          <label for="preset-input">Pipeline preset</label>
-          <select id="preset-input" aria-describedby="preset-hint">
-            <option value="default">Default</option>
-            <option value="clean">Clean</option>
-            <option value="fast">Fast</option>
-            <option value="accurate">Accurate</option>
-          </select>
-          <p class="hint" id="preset-hint">Presets tune the binary cleanup stages: simplify tolerance, smoothing passes, and dedupe tolerance.</p>
-        </div>
-        <div class="field">
-          <label for="output-scale-input">Output scale</label>
-          <input id="output-scale-input" type="number" min="0.1" max="16" step="0.1" value="1">
-          <p class="hint">Multiplies exported SVG width and height while keeping the original coordinate system (0.1 to 16).</p>
-        </div>
-        <div class="field">
-          <label class="check" for="clean-input"><input id="clean-input" type="checkbox" checked> Clean output</label>
-          <p class="hint">Runs cleaner stages during binary-mode conversion.</p>
-        </div>
-      </section>
-      <section class="block" aria-labelledby="run-heading">
-        <h2 id="run-heading"><span class="step">03</span>Vectorize</h2>
-        <button id="run-button" type="button">Vectorize</button>
-        <a id="download" class="download" href="" download="anlyflad.svg">Download SVG</a>
-        <p id="status" class="status" role="status" aria-live="polite">Choose a PNG, JPEG, or SVG file. Image files up to 1 GiB; SVG files up to 1 GiB; raster images up to 100 megapixels.</p>
-      </section>
-    </section>
-    <section class="preview-panel" aria-labelledby="preview-heading">
-      <h2 id="preview-heading">Preview</h2>
-      <p class="panel-note">Rendered from the vectorized SVG. Fits the panel width; taller output scrolls.</p>
-      <div class="stage">
-        <img id="preview" alt="Vectorized SVG preview">
-        <p class="empty">Nothing yet — choose a file, then press Vectorize.</p>
+<div class="app">
+  <nav class="menubar" aria-label="Main menu">
+    <details class="menu">
+      <summary>File</summary>
+      <div class="menu-items">
+        <button class="menu-item" type="button" data-forwards="open-button">Open image…</button>
+        <button class="menu-item" type="button" data-forwards="export-button">Export SVG…</button>
+        <button class="menu-item" type="button" id="menu-exit">Exit</button>
       </div>
+    </details>
+    <details class="menu">
+      <summary>View</summary>
+      <div class="menu-items">
+        <button class="menu-item" type="button" data-forwards="fit-button">Fit to window</button>
+        <button class="menu-item" type="button" data-forwards="actual-button">Actual size</button>
+        <button class="menu-item" type="button" data-forwards="zoom-in-button">Zoom in</button>
+        <button class="menu-item" type="button" data-forwards="zoom-out-button">Zoom out</button>
+      </div>
+    </details>
+    <details class="menu">
+      <summary>Help</summary>
+      <div class="menu-items">
+        <a class="menu-item" href="docs.html">Documentation</a>
+        <a class="menu-item" href="#about">About Anlyflad</a>
+      </div>
+    </details>
+  </nav>
+  <header class="toolbar">
+    <div class="toolbar-row">
+      <div class="group">
+        <button id="open-button" class="button button-primary" type="button">Open image</button>
+        <button id="export-button" class="button button-secondary" type="button" disabled>Export SVG</button>
+        <button id="run-button" class="button button-ink" type="button" disabled>Run</button>
+      </div>
+      <div class="group group-settings">
+        <div class="field">
+          <label class="caption" for="preset-input">Preset</label>
+          <select id="preset-input">
+            <option value="default">default</option>
+            <option value="clean">clean</option>
+            <option value="fast">fast</option>
+            <option value="accurate">accurate</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="caption" for="mode-input">Raster mode</label>
+          <select id="mode-input">
+            <option value="color">color</option>
+            <option value="binary">binary</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="caption" for="vector-mode-input">Vector mode</label>
+          <select id="vector-mode-input">
+            <option value="curve">curve</option>
+            <option value="contour">contour</option>
+            <option value="exact">exact</option>
+          </select>
+        </div>
+        <div class="field">
+          <span class="caption">Cleanup</span>
+          <label class="check"><input id="clean-input" type="checkbox" checked> Enabled</label>
+        </div>
+      </div>
+      <div class="group group-view">
+        <div class="field">
+          <span class="caption">View</span>
+          <button id="fit-button" class="button button-secondary zoom-button" type="button">Fit</button>
+        </div>
+        <button id="actual-button" class="button button-secondary zoom-button" type="button">1:1</button>
+        <button id="zoom-out-button" class="button button-secondary zoom-button" type="button" aria-label="Zoom out">-</button>
+        <span id="zoom-label" class="zoom-label">100%</span>
+        <button id="zoom-in-button" class="button button-secondary zoom-button" type="button" aria-label="Zoom in">+</button>
+      </div>
+    </div>
+    <div class="quality-row">
+      <span class="caption">Quality scale</span>
+      <input id="scale-input" type="range" min="0" max="100" step="1" value="50" aria-label="Quality scale">
+      <span id="scale-value" class="quality-value">50</span>
+      <span class="caption">0 = smallest, 100 = most detailed</span>
+      <label class="caption" for="output-scale-input">Output scale</label>
+      <input id="output-scale-input" class="number-input" type="number" min="0.1" max="16" step="0.1" value="1" aria-describedby="output-scale-hint">
+      <span id="output-scale-hint" class="caption">0.1 to 16</span>
+    </div>
+    <p id="vector-hint" class="mode-hint">Curves: smooth, resolution-independent outlines.</p>
+  </header>
+  <main class="workspace">
+    <section id="preview-stage" class="stage" aria-label="Vector preview">
+      <input class="visually-hidden" id="file-input" type="file" accept=".png,.jpg,.jpeg,.svg">
+      <img id="preview" alt="Vectorized SVG preview">
+      <p class="empty">Open an image to begin<br>Drop a PNG, JPEG, or SVG here, or use Open image.</p>
+      <a id="download" class="download-link" href="" download="anlyflad.svg">Download SVG</a>
     </section>
-  </div>
-  <footer class="about">
-    <p><strong>Anlyflad 1.0.0</strong> · Author: Richard Jiang · License: MIT</p>
-    <p>Raster modes: Color, Binary · Vector modes: Exact runs, Contour, Curves · Quality scale 0-100 · Supersample 0-4 · Output scale 0.1-16</p>
-    <p>Load a PNG, JPEG, or SVG, tune the controls, then press Vectorize and download the result as SVG.</p>
+    <aside class="inspector" aria-label="Pipeline stage inspector">
+      <div class="inspector-head">
+        <p class="eyebrow">PIPELINE</p>
+        <h2>Stages</h2>
+        <p>Select a stage to tune its parameters.</p>
+      </div>
+      <div id="inspector-body"></div>
+    </aside>
+  </main>
+  <footer class="statusbar">
+    <div id="status" role="status" aria-live="polite">Choose a PNG, JPEG, or SVG file. Image files up to 1 GiB; SVG files up to 1 GiB; raster images up to 100 megapixels.</div>
+    <div id="detail">No image loaded</div>
+    <div id="progress" class="progress" role="progressbar" aria-label="Pipeline progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="Idle"><div id="progress-fill" class="progress-fill"></div></div>
   </footer>
-</main>
+</div>
+<footer class="about" id="about">
+  <p><strong>Anlyflad 1.0.0</strong> · Author: Richard Jiang · License: MIT</p>
+  <p>Raster modes: color, binary · Vector modes: exact, contour, curve · Quality scale 0-100 · Supersample 0-4 · Output scale 0.1-16</p>
+  <p>Load a PNG, JPEG, or SVG, tune the toolbar and stage inspector, then press Run and download the result as SVG.</p>
+</footer>
 <script>
 (function () {
-  var zone = document.getElementById('dropzone');
+  var stage = document.getElementById('preview-stage');
   var input = document.getElementById('file-input');
   var download = document.getElementById('download');
-  if (!zone || !input || !download) {
-    return;
+  if (stage && input) {
+    var depth = 0;
+    stage.addEventListener('dragenter', function (event) {
+      event.preventDefault();
+      depth += 1;
+      stage.classList.add('is-dragover');
+    });
+    stage.addEventListener('dragover', function (event) {
+      event.preventDefault();
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = 'copy';
+      }
+    });
+    stage.addEventListener('dragleave', function () {
+      depth = Math.max(0, depth - 1);
+      if (depth === 0) {
+        stage.classList.remove('is-dragover');
+      }
+    });
+    stage.addEventListener('drop', function (event) {
+      event.preventDefault();
+      depth = 0;
+      stage.classList.remove('is-dragover');
+      var files = event.dataTransfer && event.dataTransfer.files;
+      if (!files || files.length === 0) {
+        return;
+      }
+      try {
+        input.files = files;
+      } catch (error) {
+        return;
+      }
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
   }
-  var depth = 0;
-  zone.addEventListener('dragenter', function (event) {
-    event.preventDefault();
-    depth += 1;
-    zone.classList.add('is-dragover');
-  });
-  zone.addEventListener('dragover', function (event) {
-    event.preventDefault();
-    if (event.dataTransfer) {
-      event.dataTransfer.dropEffect = 'copy';
-    }
-  });
-  zone.addEventListener('dragleave', function () {
-    depth = Math.max(0, depth - 1);
-    if (depth === 0) {
-      zone.classList.remove('is-dragover');
-    }
-  });
-  zone.addEventListener('drop', function (event) {
-    event.preventDefault();
-    depth = 0;
-    zone.classList.remove('is-dragover');
-    var files = event.dataTransfer && event.dataTransfer.files;
-    if (!files || files.length === 0) {
-      return;
-    }
-    try {
-      input.files = files;
-    } catch (error) {
-      return;
-    }
-    input.dispatchEvent(new Event('change', { bubbles: true }));
-  });
   document.addEventListener('dragover', function (event) {
     event.preventDefault();
   });
   document.addEventListener('drop', function (event) {
     event.preventDefault();
   });
-  download.addEventListener('click', function (event) {
-    if (!download.getAttribute('href')) {
-      event.preventDefault();
-    }
-  });
+  if (download) {
+    download.addEventListener('click', function (event) {
+      if (!download.getAttribute('href')) {
+        event.preventDefault();
+      }
+    });
+  }
   var scale = document.getElementById('scale-input');
   var scaleValue = document.getElementById('scale-value');
   if (scale && scaleValue) {
@@ -245,6 +313,78 @@
     };
     scale.addEventListener('input', syncScale);
     syncScale();
+  }
+  var vectorMode = document.getElementById('vector-mode-input');
+  var vectorHint = document.getElementById('vector-hint');
+  if (vectorMode && vectorHint) {
+    var hints = {
+      curve: 'Curves: smooth, resolution-independent outlines.',
+      contour: 'Contour: simplified color regions without curve fitting.',
+      exact: 'Exact runs: pixel-faithful rectangles for lossless color.'
+    };
+    var syncHint = function () {
+      var text = hints[vectorMode.value];
+      if (text) {
+        vectorHint.textContent = text;
+      }
+    };
+    vectorMode.addEventListener('change', syncHint);
+    syncHint();
+  }
+  document.querySelectorAll('.menu-items [data-forwards]').forEach(function (item) {
+    item.addEventListener('click', function () {
+      var target = document.getElementById(item.getAttribute('data-forwards'));
+      if (target && !target.disabled) {
+        target.click();
+      }
+    });
+  });
+  document.querySelectorAll('.menu').forEach(function (menu) {
+    menu.addEventListener('click', function (event) {
+      if (event.target.closest('.menu-items')) {
+        menu.open = false;
+      }
+    });
+  });
+  document.addEventListener('keydown', function (event) {
+    if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key === 'o') {
+      var open = document.getElementById('open-button');
+      if (open) {
+        event.preventDefault();
+        open.click();
+      }
+    }
+  });
+  var inspector = document.getElementById('inspector-body');
+  if (inspector) {
+    inspector.addEventListener('click', function (event) {
+      var reset = event.target.closest('.reset-button');
+      if (reset) {
+        var panel = reset.closest('.param-panel');
+        if (panel) {
+          panel.querySelectorAll('input[data-default]').forEach(function (field) {
+            if (field.type === 'checkbox') {
+              field.checked = field.getAttribute('data-default') === 'true';
+            } else {
+              field.value = field.getAttribute('data-default');
+            }
+          });
+        }
+        return;
+      }
+      var row = event.target.closest('.stage-row');
+      if (!row) {
+        return;
+      }
+      inspector.querySelectorAll('.stage-row').forEach(function (other) {
+        var active = other === row;
+        other.classList.toggle('is-selected', active);
+        other.setAttribute('aria-selected', active ? 'true' : 'false');
+      });
+      inspector.querySelectorAll('.param-panel').forEach(function (panel) {
+        panel.hidden = panel.getAttribute('data-panel') !== row.getAttribute('data-stage');
+      });
+    });
   }
 })();
 </script>
