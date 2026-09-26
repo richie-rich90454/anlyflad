@@ -26,6 +26,9 @@ import com.anlyflad.core.svg.SvgCache;
 import com.anlyflad.core.svg.SvgParseException;
 @Command(name="anlyflad", mixinStandardHelpOptions=true, version="1.0.0", description="Convert PNG, JPEG, and SVG files to SVG.")
 public final class AnlyfladCli {
+    static {
+        com.anlyflad.core.raster.ColorCurveVectorizer.setParallelRunner(new JvmParallelRunner());
+    }
     private static final int USER_ERROR=1;
     private static final int INTERNAL_ERROR=2;
     @Parameters(index="0", paramLabel="INPUT", description="Input PNG, JPEG, or SVG file.")
