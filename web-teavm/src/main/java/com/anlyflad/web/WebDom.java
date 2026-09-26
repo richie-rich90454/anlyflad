@@ -30,6 +30,8 @@ public final class WebDom {
         FileList getFiles();
         @JSProperty
         String getValue();
+        @JSProperty
+        boolean isChecked();
         @JSMethod
         void setAttribute(String name, String value);
     }
