@@ -4,7 +4,7 @@ import java.util.Arrays;
 import com.anlyflad.core.perf.ColorLut;
 
 public final class AdaptiveColorQuantizer {
-    public static final int DEFAULT_MAX_COLORS=16;
+    public static final int DEFAULT_MAX_COLORS=8;
     public static final int MAX_COLORS=256;
     private static final int HISTOGRAM_BITS=6;
     private static final int HISTOGRAM_LEVELS=1<<HISTOGRAM_BITS;
