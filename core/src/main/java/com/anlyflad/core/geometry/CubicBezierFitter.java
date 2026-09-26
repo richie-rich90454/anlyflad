@@ -73,6 +73,14 @@ public final class CubicBezierFitter {
     }
 
     public List<double[]> fit(double[] ring) {
+        return fit(ring, true);
+    }
+
+    public List<double[]> fitUnchecked(double[] ring) {
+        return fit(ring, false);
+    }
+
+    private List<double[]> fit(double[] ring, boolean checkSelfIntersection) {
         if (ring==null) {
             throw new IllegalArgumentException("ring must not be null");
         }
@@ -118,7 +126,7 @@ public final class CubicBezierFitter {
         if (rectilinear&&closedCount>256) {
             return copyExactRectilinear(closedCount);
         }
-        validateSimpleRing();
+        validateSimpleRing(checkSelfIntersection);
         fitRange(0,closedCount,0);
         if (result.isEmpty()) {
             throw new IllegalArgumentException("ring did not produce a cubic fit");
@@ -220,7 +228,7 @@ public final class CubicBezierFitter {
         }
         return Collections.unmodifiableList(copy);
     }
-    private void validateSimpleRing() {
+    private void validateSimpleRing(boolean checkSelfIntersection) {
         double area=0.0;
         double originX=x[0];
         double originY=y[0];
@@ -238,7 +246,7 @@ public final class CubicBezierFitter {
         }
         inputSignedArea=area*0.5;
         int count=pointCount-1;
-        if (!rectilinear) {
+        if (!rectilinear&&checkSelfIntersection) {
             useWork((long)count*(count-1L)/2L);
             for (int first=0;first<count;first++) {
                 int firstNext=(first+1)%count;
