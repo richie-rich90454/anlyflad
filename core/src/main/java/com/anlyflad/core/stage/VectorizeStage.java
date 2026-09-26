@@ -56,7 +56,13 @@ public final class VectorizeStage implements ConfigurableStage {
         RasterMode configuredMode=config.getRasterMode();
         String modeValue=config.getString(descriptor.getName(), "mode", config.getVectorMode().getOptionName());
         VectorMode configuredVectorMode=VectorMode.parse(modeValue);
+        boolean maxPathsConfigured=config.getString(descriptor.getName(), "maxPaths", null)!=null;
         int configuredMaxPaths=config.getInteger(descriptor.getName(), "maxPaths", maxPaths);
+        if (!maxPathsConfigured) {
+            configuredMaxPaths=configuredVectorMode==VectorMode.EXACT?ColorRasterVectorizer.DEFAULT_MAX_PATHS:ColorContourVectorizer.DEFAULT_MAX_PATHS;
+        } else if (configuredVectorMode!=VectorMode.EXACT&&(configuredMaxPaths<1||configuredMaxPaths>ColorContourVectorizer.MAX_PATHS)) {
+            throw new IllegalArgumentException("maxPaths must be between 1 and "+ColorContourVectorizer.MAX_PATHS+" for contour and curve modes");
+        }
         int configuredMaxVertices=config.getInteger(descriptor.getName(), "maxVertices", maxVertices);
         double configuredCurveTolerance=config.getDouble(descriptor.getName(), "curveTolerance", curveTolerance);
         if (configuredMode==rasterMode&&configuredVectorMode==vectorMode&&configuredMaxPaths==maxPaths&&configuredMaxVertices==maxVertices&&Double.doubleToLongBits(configuredCurveTolerance)==Double.doubleToLongBits(curveTolerance)) {
@@ -90,9 +96,9 @@ public final class VectorizeStage implements ConfigurableStage {
             RasterFrame frame=RasterFrame.wrap(document.getWidth(), document.getHeight(), document.getOwnedPixels());
             if (vectorMode==VectorMode.EXACT) {
                 if (rasterMode==RasterMode.COLOR) {
-                    return document.withPathsAndOwnedPixels(validateVertexBudget(ColorRasterVectorizer.vectorize(frame, maxPaths), maxVertices));
+                    return document.withPathsAndOwnedPixels(ColorRasterVectorizer.vectorize(frame, maxPaths));
                 }
-                return document.withPathsAndOwnedPixels(validateVertexBudget(RasterVectorizer.vectorize(frame, maxPaths), maxVertices));
+                return document.withPathsAndOwnedPixels(RasterVectorizer.vectorize(frame, maxPaths));
             }
             if (vectorMode==VectorMode.CURVE) {
                 if (rasterMode==RasterMode.BINARY) {
@@ -121,16 +127,6 @@ public final class VectorizeStage implements ConfigurableStage {
             total+=paths.get(index).getCubicSegmentCount();
             if (total>limit) {
                 throw new IllegalArgumentException("cubic segment budget of "+limit+" exceeded; increase maxVertices or simplify the curve tolerance");
-            }
-        }
-        return paths;
-    }
-    private java.util.List<VectorPath> validateVertexBudget(java.util.List<VectorPath> paths, int limit) {
-        long total=0L;
-        for (int index=0;index<paths.size();index++) {
-            total+=paths.get(index).getNodeCount();
-            if (total>limit) {
-                throw new IllegalArgumentException("vertex budget of "+limit+" exceeded; increase maxVertices or reduce the raster complexity (required at least "+total+")");
             }
         }
         return paths;
