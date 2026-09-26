@@ -1,6 +1,7 @@
 package com.anlyflad.desktop;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
+import java.awt.Image;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.InputEvent;
@@ -10,6 +11,11 @@ import java.awt.event.WindowListener;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
+import javax.imageio.ImageIO;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JMenu;
@@ -37,6 +43,7 @@ public final class VectoriumFrame extends JFrame {
     private final Timer pipelineDebounce;
     public VectoriumFrame() {
         super("Anlyflad");
+        installIcon();
         canvas=new VectorCanvas();
         toolbar=new DesktopToolbar();
         stageInspector=new StageInspectorPanel(new StageRegistry(), PipelineConfig.defaults());
@@ -109,6 +116,32 @@ public final class VectoriumFrame extends JFrame {
     }
     public static void main(String[] args) {
         SwingUtilities.invokeLater(new LaunchFrame());
+    }
+    private void installIcon() {
+        List<Image> icons=new ArrayList<Image>();
+        String[] names={"anlyflad-icon-16.png", "anlyflad-icon-32.png", "anlyflad-icon-48.png", "anlyflad-icon-64.png", "anlyflad-icon-128.png", "anlyflad-icon-256.png"};
+        for (int index=0;index<names.length;index++) {
+            InputStream stream=VectoriumFrame.class.getResourceAsStream("/"+names[index]);
+            if (stream==null) {
+                continue;
+            }
+            try {
+                Image image=ImageIO.read(stream);
+                if (image!=null) {
+                    icons.add(image);
+                }
+            } catch (IOException exception) {
+                // ponytail: missing or unreadable icon sizes simply fall through to the remaining sizes
+            } finally {
+                try {
+                    stream.close();
+                } catch (IOException exception) {
+                }
+            }
+        }
+        if (!icons.isEmpty()) {
+            setIconImages(icons);
+        }
     }
     public VectorCanvas getCanvas() {
         return canvas;
