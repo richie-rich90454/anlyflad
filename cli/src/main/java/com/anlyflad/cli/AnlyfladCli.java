@@ -44,7 +44,7 @@ public final class AnlyfladCli {
     private String mode="color";
     @Option(names="--vector-mode", paramLabel="MODE", description="Vector mode: exact, contour, or curve.")
     private String vectorMode="curve";
-    @Option(names="--scale", paramLabel="NAME", description="Quality scale: draft, balanced, or max.")
+    @Option(names="--scale", paramLabel="NAME", description="Quality scale: 0 to 100, or draft, balanced, or max.")
     private String scale;
     @Option(names="--no-clean", description="Disable cleaner stages.")
     private boolean noClean;
@@ -150,11 +150,9 @@ public final class AnlyfladCli {
         try {
             List<String> values=new ArrayList<String>(stageValues);
             if (scale!=null) {
-                String normalized=scale.trim().toLowerCase(Locale.ROOT);
-                if (!"draft".equals(normalized)&&!"balanced".equals(normalized)&&!"max".equals(normalized)) {
-                    throw new IllegalArgumentException("scale must be draft, balanced, or max");
-                }
-                values.add("vectorize.quality="+normalized);
+                int quality=com.anlyflad.core.stage.QualityScale.parse(scale);
+                values.add("vectorize.quality="+quality);
+                values.add("quantize.maxColors="+com.anlyflad.core.stage.QualityScale.maxColors(quality));
             }
             return CliConfiguration.create(!noClean, preset, RasterMode.parse(mode), VectorMode.parse(vectorMode), values, disabledStages);
         } catch (IllegalArgumentException exception) {
