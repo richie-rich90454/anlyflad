@@ -3,28 +3,195 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Anlyflad Web</title>
+<title>Anlyflad — raster &amp; SVG vectorizer</title>
 <style>
-:root{font-family:system-ui,sans-serif;color:#25231f;background:#f3f0e8}body{margin:0;padding:24px}main{max-width:1100px;margin:auto}h1{margin:0 0 8px;font-size:28px}p{color:#6f6a61}.toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:16px;background:#fffcf6;border:1px solid #b8b1a4;border-radius:12px;margin:20px 0}button,.download{border:0;border-radius:8px;padding:12px 16px;font:inherit;font-weight:700;cursor:pointer;background:#d65a31;color:#fff;text-decoration:none}button.secondary,.download{background:#25231f}.preview{min-height:420px;display:grid;place-items:center;background:#d8d4ca;border:1px solid #b8b1a4;border-radius:12px;padding:16px}.preview img{max-width:100%;max-height:680px;background:#fff}.status{margin-top:12px;color:#397a4b;font-weight:600}input[type=file]{max-width:100%}select{border:1px solid #b8b1a4;border-radius:8px;padding:10px;background:#fffcf6;font:inherit}
+  *{box-sizing:border-box}
+  :root{
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    color-scheme:light;
+    --ink:#25231f;
+    --paper:#f3f0e8;
+    --panel:#fffcf6;
+    --line:#b8b1a4;
+    --muted:#6f6a61;
+    --accent:#d65a31;
+    --accent-deep:#c04d26;
+    --rail-line:rgba(243,240,232,.16);
+    --rail-muted:#b7b0a3;
+    --stage:#f6f3ea;
+    --stage-check:#e8e3d7;
+    background:var(--paper);
+  }
+  body{margin:0;padding:0 0 48px;background:var(--paper);color:var(--ink)}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 20px}
+  h1,h2,p{margin:0}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .visually-hidden{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
+
+  .masthead{display:flex;flex-wrap:wrap;align-items:flex-end;gap:6px 22px;padding:30px 0 18px;border-bottom:1px solid var(--line)}
+  .masthead h1{font:800 clamp(30px,5vw,44px)/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:-.02em}
+  .masthead h1::before{content:"";display:inline-block;width:.42em;height:.42em;margin-right:.2em;background:var(--accent);vertical-align:.04em}
+  .tagline{color:var(--muted);font-size:15px;padding-bottom:5px}
+
+  .workspace{display:grid;gap:20px;padding-top:22px}
+  @media (min-width:960px){
+    .workspace{grid-template-columns:minmax(330px,390px) minmax(0,1fr);align-items:start}
+  }
+
+  .rail{background:var(--ink);color:var(--paper);border-radius:2px;padding:4px 22px 22px;color-scheme:dark}
+  .block{padding:20px 0;border-bottom:1px solid var(--rail-line)}
+  .block:last-child{border-bottom:0;padding-bottom:0}
+  .block h2{font:600 11.5px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.16em;text-transform:uppercase;color:#cfc9bc;display:flex;align-items:baseline;gap:10px;margin-bottom:14px}
+  .step{color:var(--accent);font-weight:700}
+
+  .dropzone{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:28px 18px;border:2px dashed rgba(243,240,232,.32);border-radius:2px;text-align:center;cursor:pointer;transition:border-color .15s,background-color .15s}
+  .dropzone svg{width:30px;height:30px;color:#8f887b;transition:color .15s}
+  .dropzone strong{font-size:16px}
+  .dropzone span{font-size:13px;color:var(--rail-muted)}
+  .dropzone:hover{border-color:rgba(214,90,49,.75)}
+  .dropzone:hover svg{color:var(--accent)}
+  .dropzone.is-dragover{border-color:var(--accent);background:rgba(214,90,49,.15)}
+  .dropzone.is-dragover svg{color:var(--accent)}
+  .dropzone:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+
+  .field{margin-bottom:16px}
+  .field:last-child{margin-bottom:0}
+  .field>label{display:block;font-weight:600;font-size:14px;margin-bottom:6px}
+  select{width:100%;border:1px solid #5c574d;border-radius:2px;padding:9px 10px;background:#1a1815;color:var(--paper);font:inherit}
+  .hint{margin-top:8px;font-size:12.5px;line-height:1.55;color:var(--rail-muted)}
+  .hint b{color:#e9e3d6;font-weight:600}
+
+  #run-button{width:100%;border:0;border-radius:2px;padding:13px 18px;font:inherit;font-size:19px;font-weight:800;cursor:pointer;background:var(--accent);color:#fff;transition:background-color .15s}
+  #run-button:hover{background:var(--accent-deep)}
+  #run-button:active{transform:translateY(1px)}
+  .download{display:block;width:100%;margin-top:10px;padding:11px 16px;border:1px solid rgba(243,240,232,.4);border-radius:2px;text-align:center;font-weight:600;font-size:14.5px;color:var(--paper);text-decoration:none;transition:border-color .15s}
+  .download:hover{border-color:var(--paper)}
+  #download[href=""]{opacity:.4;pointer-events:none}
+
+  .status{margin-top:16px;padding:10px 12px;border-left:3px solid var(--accent);background:rgba(243,240,232,.05);font:400 12.5px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#e6e0d4;overflow-wrap:anywhere}
+
+  .preview-panel{background:var(--panel);border:1px solid var(--line);border-radius:2px;padding:16px}
+  .preview-panel h2{font:600 11.5px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+  .panel-note{font-size:12px;color:var(--muted);margin-bottom:12px}
+  .stage{display:flex;height:clamp(320px,68vh,860px);overflow:auto;padding:16px;border:1px solid var(--line);background-color:var(--stage);background-image:linear-gradient(45deg,var(--stage-check) 25%,transparent 25%),linear-gradient(-45deg,var(--stage-check) 25%,transparent 25%),linear-gradient(45deg,transparent 75%,var(--stage-check) 75%),linear-gradient(-45deg,transparent 75%,var(--stage-check) 75%);background-size:24px 24px;background-position:0 0,0 12px,12px -12px,-12px 0}
+  #preview{display:none;margin:auto;max-width:100%;height:auto;border:1px solid var(--line)}
+  #preview[src]:not([src=""]){display:block}
+  #preview[src]:not([src=""])+ .empty{display:none}
+  .empty{margin:auto;max-width:36ch;color:var(--muted);font-size:14px;line-height:1.6;text-align:center}
+
+  @media (prefers-reduced-motion:reduce){
+    *{transition:none!important}
+  }
 </style>
 </head>
 <body>
-<main>
-<h1>Anlyflad</h1>
-<p>Raster and SVG vectorization in your browser. Image files up to 1 GiB; SVG files up to 1 GiB; raster images up to 100 megapixels at full resolution.</p>
-<div class="toolbar">
-    <label for="file-input">Input file</label>
-    <input id="file-input" type="file" accept=".png,.jpg,.jpeg,.svg">
-    <label for="mode-input">Raster mode</label>
-    <select id="mode-input"><option value="color">Color</option><option value="binary">Binary</option></select>
-    <label for="vector-mode-input">Vector mode</label>
-    <select id="vector-mode-input"><option value="curve">Curves</option><option value="contour">Contour</option><option value="exact">Exact runs</option></select>
-    <button id="run-button" type="button">Vectorize</button>
-<a id="download" class="download" href="#" download="anlyflad.svg">Download SVG</a>
-</div>
-<div class="preview"><img id="preview" alt="Vectorized preview"></div>
-<div id="status" class="status" role="status" aria-live="polite">Choose a PNG, JPEG, or SVG file. Image files up to 1 GiB; SVG files up to 1 GiB; raster images up to 100 megapixels.</div>
+<main class="wrap">
+  <header class="masthead">
+    <h1>Anlyflad</h1>
+    <p class="tagline">Raster and SVG vectorization in your browser — up to 100 megapixels, up to 1 GiB per file.</p>
+  </header>
+  <div class="workspace">
+    <section class="rail" aria-label="Vectorization controls">
+      <section class="block" aria-labelledby="source-heading">
+        <h2 id="source-heading"><span class="step">01</span>Source</h2>
+        <label class="dropzone" id="dropzone" for="file-input">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3v11"/><path d="m7 10 5 5 5-5"/><path d="M4 19h16"/></svg>
+          <strong>Drop an image here</strong>
+          <span>PNG, JPEG, or SVG — or click to browse</span>
+          <input class="visually-hidden" id="file-input" type="file" accept=".png,.jpg,.jpeg,.svg" aria-describedby="file-hint">
+        </label>
+        <p class="hint" id="file-hint">Image files up to 1 GiB · SVG files up to 1 GiB · raster images up to 100 megapixels at full resolution.</p>
+      </section>
+      <section class="block" aria-labelledby="modes-heading">
+        <h2 id="modes-heading"><span class="step">02</span>Modes</h2>
+        <div class="field">
+          <label for="mode-input">Raster mode</label>
+          <select id="mode-input" aria-describedby="raster-hint">
+            <option value="color">Color</option>
+            <option value="binary">Binary</option>
+          </select>
+          <p class="hint" id="raster-hint"><b>Color</b> keeps the full palette. <b>Binary</b> thresholds to black shapes on white. Applies to PNG/JPEG input; SVG input skips this.</p>
+        </div>
+        <div class="field">
+          <label for="vector-mode-input">Vector mode</label>
+          <select id="vector-mode-input" aria-describedby="vector-hint">
+            <option value="curve">Curves</option>
+            <option value="contour">Contour</option>
+            <option value="exact">Exact runs</option>
+          </select>
+          <p class="hint" id="vector-hint"><b>Curves</b> fits smooth Béziers — smallest output. <b>Contour</b> traces region outlines — crisp edges. <b>Exact runs</b> reproduces every pixel run — pixel-perfect, largest output.</p>
+        </div>
+      </section>
+      <section class="block" aria-labelledby="run-heading">
+        <h2 id="run-heading"><span class="step">03</span>Vectorize</h2>
+        <button id="run-button" type="button">Vectorize</button>
+        <a id="download" class="download" href="" download="anlyflad.svg">Download SVG</a>
+        <p id="status" class="status" role="status" aria-live="polite">Choose a PNG, JPEG, or SVG file. Image files up to 1 GiB; SVG files up to 1 GiB; raster images up to 100 megapixels.</p>
+      </section>
+    </section>
+    <section class="preview-panel" aria-labelledby="preview-heading">
+      <h2 id="preview-heading">Preview</h2>
+      <p class="panel-note">Rendered from the vectorized SVG. Fits the panel width; taller output scrolls.</p>
+      <div class="stage">
+        <img id="preview" alt="Vectorized SVG preview">
+        <p class="empty">Nothing yet — choose a file, then press Vectorize.</p>
+      </div>
+    </section>
+  </div>
 </main>
-<script type="module" src="anlyflad.js"></script>
+<script>
+(function () {
+  var zone = document.getElementById('dropzone');
+  var input = document.getElementById('file-input');
+  var download = document.getElementById('download');
+  if (!zone || !input || !download) {
+    return;
+  }
+  var depth = 0;
+  zone.addEventListener('dragenter', function (event) {
+    event.preventDefault();
+    depth += 1;
+    zone.classList.add('is-dragover');
+  });
+  zone.addEventListener('dragover', function (event) {
+    event.preventDefault();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'copy';
+    }
+  });
+  zone.addEventListener('dragleave', function () {
+    depth = Math.max(0, depth - 1);
+    if (depth === 0) {
+      zone.classList.remove('is-dragover');
+    }
+  });
+  zone.addEventListener('drop', function (event) {
+    event.preventDefault();
+    depth = 0;
+    zone.classList.remove('is-dragover');
+    var files = event.dataTransfer && event.dataTransfer.files;
+    if (!files || files.length === 0) {
+      return;
+    }
+    try {
+      input.files = files;
+    } catch (error) {
+      return;
+    }
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  document.addEventListener('dragover', function (event) {
+    event.preventDefault();
+  });
+  document.addEventListener('drop', function (event) {
+    event.preventDefault();
+  });
+  download.addEventListener('click', function (event) {
+    if (!download.getAttribute('href')) {
+      event.preventDefault();
+    }
+  });
+})();
+</script>
 </body>
 </html>
