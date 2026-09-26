@@ -4,7 +4,7 @@ Anlyflad is a Maven reactor with one shared Java core and three delivery modules
 ```text
 PNG/JPEG/SVG -> module loader -> VectorDocument -> Pipeline -> VectorDocument -> SvgCache/SvgWriter -> SVG
 ```
-The parent project owns the module list, compiler settings, dependency versions, and the JDK 25 Enforcer rule. `core` is the dependency of `cli`, `desktop-swing`, and `web-teavm`; the front ends do not duplicate vectorization logic.
+The parent project owns the module list, compiler settings, dependency versions, and the JDK 25 Enforcer rule. `core` is the dependency of `cli`, `desktop-swing`, and `web-teavm`; the front ends do not duplicate vectorization logic. All published classes target `-release 8`, so the CLI, desktop application, and all-in-one JAR run on every Java 8 or newer runtime; JDK 25 is required only to build from source.
 ## Module boundaries
 | Package or module | Contents |
 |---|---|
