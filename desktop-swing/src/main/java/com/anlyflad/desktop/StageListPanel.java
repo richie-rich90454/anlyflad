@@ -49,7 +49,9 @@ public final class StageListPanel extends JPanel {
         stageList=new JList<String>(model);
         stageList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         stageList.setFont(DesktopTheme.BODY_FONT);
-        stageList.setBackground(DesktopTheme.SURFACE);
+        stageList.setBackground(DesktopTheme.SURFACE_ALT);
+        stageList.setFixedCellHeight(30);
+        stageList.setCellRenderer(new StageRenderer());
         stageList.getAccessibleContext().setAccessibleName("Pipeline stages");
         enabledCheck=new JCheckBox("Stage enabled");
         enabledCheck.setFont(DesktopTheme.LABEL_FONT);
@@ -178,6 +180,22 @@ public final class StageListPanel extends JPanel {
     }
     private boolean isProtectedStage(String stageName) {
         return "validate".equals(stageName)||"serialize".equals(stageName)||"vectorize".equals(stageName);
+    }
+    private static final class StageRenderer extends javax.swing.DefaultListCellRenderer {
+        private static final long serialVersionUID=1L;
+        public java.awt.Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean selected, boolean focused) {
+            JLabel label=(JLabel)super.getListCellRendererComponent(list, value, index, selected, focused);
+            label.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 10));
+            label.setFont(DesktopTheme.BODY_FONT);
+            if (selected) {
+                label.setBackground(DesktopTheme.ACCENT_SOFT);
+                label.setForeground(DesktopTheme.TEXT);
+            } else {
+                label.setBackground(index%2==0?DesktopTheme.SURFACE:DesktopTheme.SURFACE_ALT);
+                label.setForeground(DesktopTheme.TEXT);
+            }
+            return label;
+        }
     }
     private final class SelectionHandler implements ListSelectionListener {
         public void valueChanged(ListSelectionEvent event) {
