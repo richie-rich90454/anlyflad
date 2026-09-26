@@ -8,11 +8,15 @@ public final class StatusBarTest {
     public void shouldExposeStatusAndProgress() {
         StatusBar status=new StatusBar();
         status.setStatus("Vectorizing");
+        status.setBusy(true);
+        assertTrue(status.isBusy());
+        assertTrue(status.isProgressIndeterminate());
         status.setProgress(3, 15);
         assertEquals("Vectorizing", status.getStatusText());
         assertEquals(3, status.getProgressValue());
         assertEquals(15, status.getProgressMaximum());
         assertTrue(status.isBusy());
+        assertFalse(status.isProgressIndeterminate());
         status.setBusy(false);
         assertFalse(status.isBusy());
     }
