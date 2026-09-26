@@ -54,6 +54,25 @@ public final class AnlyfladCliTest {
         assertTrue(svg.contains("#0000ff"));
     }
     @Test
+    public void shouldAcceptQualityScaleFlagAndRejectUnknownScale() throws Exception {
+        BufferedImage image=new BufferedImage(2, 2, BufferedImage.TYPE_INT_ARGB);
+        image.setRGB(0,0,0xFFFF0000);
+        image.setRGB(1,0,0xFF0000FF);
+        image.setRGB(0,1,0xFFFF0000);
+        image.setRGB(1,1,0xFF0000FF);
+        File input=new File(temporaryDirectory.toFile(), "scale.png");
+        File output=new File(temporaryDirectory.toFile(), "scale.svg");
+        assertTrue(ImageIO.write(image, "png", input));
+        ByteArrayOutputStream outputBytes=new ByteArrayOutputStream();
+        ByteArrayOutputStream errorBytes=new ByteArrayOutputStream();
+        AnlyfladCli command=new AnlyfladCli(new PrintStream(outputBytes), new PrintStream(errorBytes));
+        assertEquals(0, command.execute(input.getAbsolutePath(), "-o", output.getAbsolutePath(), "--scale", "max"));
+        assertTrue(output.isFile());
+        errorBytes.reset();
+        assertEquals(1, command.execute(input.getAbsolutePath(), "-o", output.getAbsolutePath(), "--scale", "nope"));
+        assertTrue(errorBytes.toString("UTF-8").contains("scale must be draft, balanced, or max"));
+    }
+    @Test
     public void shouldExposeVersionNoCleanAndRejectInvalidConfiguration() throws Exception {
         File input=new File(temporaryDirectory.toFile(), "input.svg");
         File output=new File(temporaryDirectory.toFile(), "output.svg");
