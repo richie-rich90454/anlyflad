@@ -8,22 +8,36 @@ import com.anlyflad.core.raster.ColorRasterVectorizer;
 import com.anlyflad.core.raster.RasterFrame;
 import com.anlyflad.core.raster.RasterVectorizer;
 public final class VectorizeStage implements ConfigurableStage {
+    public static final String QUALITY_DRAFT="draft";
+    public static final String QUALITY_BALANCED="balanced";
+    public static final String QUALITY_MAX="max";
+    private static final double DRAFT_TOLERANCE=1.5;
+    private static final double MAX_TOLERANCE=0.2;
+    private static final int DRAFT_SUPERSAMPLE=1;
+    private static final int MAX_SUPERSAMPLE=4;
+    private static final double MAX_OUTPUT_SCALE=16.0;
     private final StageDescriptor descriptor;
     private final RasterMode rasterMode;
     private final VectorMode vectorMode;
     private final int maxPaths;
     private final int maxVertices;
     private final double curveTolerance;
+    private final String quality;
+    private final int supersample;
+    private final double outputScale;
     public VectorizeStage(StageDescriptor descriptor) {
-        this(descriptor, RasterMode.COLOR, VectorMode.CURVE, ColorRasterVectorizer.DEFAULT_MAX_PATHS, ColorContourVectorizer.DEFAULT_MAX_VERTICES, ColorCurveVectorizer.DEFAULT_TOLERANCE);
+        this(descriptor, RasterMode.COLOR, VectorMode.CURVE, ColorRasterVectorizer.DEFAULT_MAX_PATHS, ColorContourVectorizer.DEFAULT_MAX_VERTICES, ColorCurveVectorizer.DEFAULT_TOLERANCE, QUALITY_BALANCED, 0, 1.0);
     }
     public VectorizeStage(StageDescriptor descriptor, RasterMode rasterMode, int maxPaths) {
-        this(descriptor, rasterMode, VectorMode.CURVE, maxPaths, ColorContourVectorizer.DEFAULT_MAX_VERTICES, ColorCurveVectorizer.DEFAULT_TOLERANCE);
+        this(descriptor, rasterMode, VectorMode.CURVE, maxPaths, ColorContourVectorizer.DEFAULT_MAX_VERTICES, ColorCurveVectorizer.DEFAULT_TOLERANCE, QUALITY_BALANCED, 0, 1.0);
     }
     public VectorizeStage(StageDescriptor descriptor, RasterMode rasterMode, VectorMode vectorMode, int maxPaths, int maxVertices) {
-        this(descriptor, rasterMode, vectorMode, maxPaths, maxVertices, ColorCurveVectorizer.DEFAULT_TOLERANCE);
+        this(descriptor, rasterMode, vectorMode, maxPaths, maxVertices, ColorCurveVectorizer.DEFAULT_TOLERANCE, QUALITY_BALANCED, 0, 1.0);
     }
     public VectorizeStage(StageDescriptor descriptor, RasterMode rasterMode, VectorMode vectorMode, int maxPaths, int maxVertices, double curveTolerance) {
+        this(descriptor, rasterMode, vectorMode, maxPaths, maxVertices, curveTolerance, QUALITY_BALANCED, 0, 1.0);
+    }
+    public VectorizeStage(StageDescriptor descriptor, RasterMode rasterMode, VectorMode vectorMode, int maxPaths, int maxVertices, double curveTolerance, String quality, int supersample, double outputScale) {
         if (descriptor==null) {
             throw new IllegalArgumentException("descriptor must not be null");
         }
@@ -42,12 +56,22 @@ public final class VectorizeStage implements ConfigurableStage {
         if (!Double.isFinite(curveTolerance)||curveTolerance<0.0) {
             throw new IllegalArgumentException("curveTolerance must be finite and nonnegative");
         }
+        requireQuality(quality);
+        if (supersample<0||supersample>MAX_SUPERSAMPLE) {
+            throw new IllegalArgumentException("supersample must be between 0 and "+MAX_SUPERSAMPLE);
+        }
+        if (!Double.isFinite(outputScale)||outputScale<=0.0||outputScale>MAX_OUTPUT_SCALE) {
+            throw new IllegalArgumentException("outputScale must be between 0 and "+MAX_OUTPUT_SCALE);
+        }
         this.descriptor=descriptor;
         this.rasterMode=rasterMode;
         this.vectorMode=vectorMode;
         this.maxPaths=maxPaths;
         this.maxVertices=maxVertices;
         this.curveTolerance=curveTolerance;
+        this.quality=quality;
+        this.supersample=supersample;
+        this.outputScale=outputScale;
     }
     public Stage withConfig(PipelineConfig config) {
         if (config==null) {
@@ -64,11 +88,31 @@ public final class VectorizeStage implements ConfigurableStage {
             throw new IllegalArgumentException("maxPaths must be between 1 and "+ColorContourVectorizer.MAX_PATHS+" for contour and curve modes");
         }
         int configuredMaxVertices=config.getInteger(descriptor.getName(), "maxVertices", maxVertices);
+        boolean qualityConfigured=config.getString(descriptor.getName(), "quality", null)!=null;
+        String configuredQuality=config.getString(descriptor.getName(), "quality", quality);
+        requireQuality(configuredQuality);
+        boolean toleranceConfigured=config.getString(descriptor.getName(), "curveTolerance", null)!=null;
         double configuredCurveTolerance=config.getDouble(descriptor.getName(), "curveTolerance", curveTolerance);
-        if (configuredMode==rasterMode&&configuredVectorMode==vectorMode&&configuredMaxPaths==maxPaths&&configuredMaxVertices==maxVertices&&Double.doubleToLongBits(configuredCurveTolerance)==Double.doubleToLongBits(curveTolerance)) {
+        if (qualityConfigured&&!toleranceConfigured) {
+            configuredCurveTolerance=toleranceForQuality(configuredQuality);
+        }
+        boolean supersampleConfigured=config.getString(descriptor.getName(), "supersample", null)!=null;
+        int configuredSupersample=config.getInteger(descriptor.getName(), "supersample", supersample);
+        if (qualityConfigured&&!supersampleConfigured) {
+            configuredSupersample=supersampleForQuality(configuredQuality);
+        }
+        if (configuredSupersample<0||configuredSupersample>MAX_SUPERSAMPLE) {
+            throw new IllegalArgumentException("supersample must be between 0 and "+MAX_SUPERSAMPLE);
+        }
+        boolean outputScaleConfigured=config.getString(descriptor.getName(), "outputScale", null)!=null;
+        double configuredOutputScale=config.getDouble(descriptor.getName(), "outputScale", outputScale);
+        if (outputScaleConfigured&&(!Double.isFinite(configuredOutputScale)||configuredOutputScale<=0.0||configuredOutputScale>MAX_OUTPUT_SCALE)) {
+            throw new IllegalArgumentException("outputScale must be between 0 and "+MAX_OUTPUT_SCALE);
+        }
+        if (configuredMode==rasterMode&&configuredVectorMode==vectorMode&&configuredMaxPaths==maxPaths&&configuredMaxVertices==maxVertices&&Double.doubleToLongBits(configuredCurveTolerance)==Double.doubleToLongBits(curveTolerance)&&configuredQuality.equals(quality)&&configuredSupersample==supersample&&Double.doubleToLongBits(configuredOutputScale)==Double.doubleToLongBits(outputScale)) {
             return this;
         }
-        return new VectorizeStage(descriptor, configuredMode, configuredVectorMode, configuredMaxPaths, configuredMaxVertices, configuredCurveTolerance);
+        return new VectorizeStage(descriptor, configuredMode, configuredVectorMode, configuredMaxPaths, configuredMaxVertices, configuredCurveTolerance, configuredQuality, configuredSupersample, configuredOutputScale);
     }
     public String getName() {
         return descriptor.getName();
@@ -94,22 +138,25 @@ public final class VectorizeStage implements ConfigurableStage {
         }
         try {
             RasterFrame frame=RasterFrame.wrap(document.getWidth(), document.getHeight(), document.getOwnedPixels());
+            VectorDocument output;
             if (vectorMode==VectorMode.EXACT) {
                 if (rasterMode==RasterMode.COLOR) {
-                    return document.withPathsAndOwnedPixels(ColorRasterVectorizer.vectorize(frame, maxPaths));
+                    output=document.withPathsAndOwnedPixels(ColorRasterVectorizer.vectorize(frame, maxPaths));
+                } else {
+                    output=document.withPathsAndOwnedPixels(RasterVectorizer.vectorize(frame, maxPaths));
                 }
-                return document.withPathsAndOwnedPixels(RasterVectorizer.vectorize(frame, maxPaths));
-            }
-            if (vectorMode==VectorMode.CURVE) {
+            } else if (vectorMode==VectorMode.CURVE) {
                 if (rasterMode==RasterMode.BINARY) {
-                    return document.withPathsAndOwnedPixels(validateCubicBudget(ColorCurveVectorizer.vectorizeForeground(frame, curveTolerance, maxPaths, maxVertices), maxVertices));
+                    output=document.withPathsAndOwnedPixels(validateCubicBudget(ColorCurveVectorizer.vectorizeForeground(frame, curveTolerance, maxPaths, maxVertices), maxVertices));
+                } else {
+                    output=document.withPathsAndOwnedPixels(validateCubicBudget(ColorCurveVectorizer.vectorize(frame, curveTolerance, maxPaths, maxVertices, supersample), maxVertices));
                 }
-                return document.withPathsAndOwnedPixels(validateCubicBudget(ColorCurveVectorizer.vectorize(frame, curveTolerance, maxPaths, maxVertices), maxVertices));
+            } else if (rasterMode==RasterMode.BINARY) {
+                output=document.withPathsAndOwnedPixels(ColorContourVectorizer.vectorizeForeground(frame, maxPaths, maxVertices));
+            } else {
+                output=document.withPathsAndOwnedPixels(ColorContourVectorizer.vectorizeSupersampled(frame, maxPaths, maxVertices, supersample));
             }
-            if (rasterMode==RasterMode.BINARY) {
-                return document.withPathsAndOwnedPixels(ColorContourVectorizer.vectorizeForeground(frame, maxPaths, maxVertices));
-            }
-            return document.withPathsAndOwnedPixels(ColorContourVectorizer.vectorizeSupersampled(frame, maxPaths, maxVertices));
+            return outputScale==1.0?output:output.withOutputScale(outputScale);
         } catch (IllegalArgumentException exception) {
             String message=exception.getMessage();
             if (message==null||message.trim().isEmpty()) {
@@ -130,5 +177,28 @@ public final class VectorizeStage implements ConfigurableStage {
             }
         }
         return paths;
+    }
+    private static void requireQuality(String quality) {
+        if (!QUALITY_DRAFT.equals(quality)&&!QUALITY_BALANCED.equals(quality)&&!QUALITY_MAX.equals(quality)) {
+            throw new IllegalArgumentException("quality must be draft, balanced, or max");
+        }
+    }
+    private static double toleranceForQuality(String quality) {
+        if (QUALITY_DRAFT.equals(quality)) {
+            return DRAFT_TOLERANCE;
+        }
+        if (QUALITY_MAX.equals(quality)) {
+            return MAX_TOLERANCE;
+        }
+        return ColorCurveVectorizer.DEFAULT_TOLERANCE;
+    }
+    private static int supersampleForQuality(String quality) {
+        if (QUALITY_DRAFT.equals(quality)) {
+            return DRAFT_SUPERSAMPLE;
+        }
+        if (QUALITY_MAX.equals(quality)) {
+            return MAX_SUPERSAMPLE;
+        }
+        return 0;
     }
 }
