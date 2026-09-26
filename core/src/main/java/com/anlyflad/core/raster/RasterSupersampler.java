@@ -36,10 +36,17 @@ public final class RasterSupersampler {
     }
 
     public static RasterFrame sample(RasterFrame frame) {
+        return sample(frame,0);
+    }
+
+    public static RasterFrame sample(RasterFrame frame,int requestedScale) {
         if (frame==null) {
             throw new IllegalArgumentException("frame must not be null");
         }
-        int scale=scaleFor(frame.getWidth(),frame.getHeight());
+        if (requestedScale<0||requestedScale>MAX_SCALE) {
+            throw new IllegalArgumentException("supersample scale must be between 0 and "+MAX_SCALE);
+        }
+        int scale=requestedScale==0?scaleFor(frame.getWidth(),frame.getHeight()):requestedScale;
         return scale<=1?frame:upsample(frame,scale);
     }
 
