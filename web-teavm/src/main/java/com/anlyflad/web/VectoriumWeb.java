@@ -6,6 +6,7 @@ import com.anlyflad.core.stage.BoundedPipelineMemoizer;
 import com.anlyflad.core.stage.Pipeline;
 import com.anlyflad.core.stage.PipelineConfig;
 import com.anlyflad.core.stage.PipelineLogger;
+import com.anlyflad.core.stage.QualityScale;
 import com.anlyflad.core.stage.RasterMode;
 import com.anlyflad.core.stage.StageException;
 import com.anlyflad.core.stage.StageRegistry;
@@ -164,11 +165,13 @@ public final class VectoriumWeb {
         try {
             SvgCache cache=new SvgCache();
             StageRegistry registry=new StageRegistry(new WebLogger(), new BoundedPipelineMemoizer(), cache);
-            String quality=scaleInput.getValue();
-            if (!"draft".equals(quality)&&!"balanced".equals(quality)&&!"max".equals(quality)) {
-                quality="balanced";
+            int quality;
+            try {
+                quality=QualityScale.parse(scaleInput.getValue());
+            } catch (IllegalArgumentException exception) {
+                quality=QualityScale.DEFAULT;
             }
-            PipelineConfig config=PipelineConfig.defaults().withRasterMode(RasterMode.parse(modeInput.getValue())).withVectorMode(VectorMode.parse(vectorModeInput.getValue())).withStageValue("vectorize", "quality", quality);
+            PipelineConfig config=PipelineConfig.defaults().withRasterMode(RasterMode.parse(modeInput.getValue())).withVectorMode(VectorMode.parse(vectorModeInput.getValue())).withStageValue("vectorize", "quality", Integer.toString(quality)).withStageValue("quantize", "maxColors", Integer.toString(QualityScale.maxColors(quality)));
             Pipeline pipeline=registry.buildPipeline(config);
             VectorDocument result=pipeline.run(current, config);
             String svg=cache.get(result);
