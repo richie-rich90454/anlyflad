@@ -81,6 +81,27 @@ public final class RasterSupersamplerTest {
     }
 
     @Test
+    public void shouldNotReusePaletteMatchesAcrossPaletteChanges() {
+        int green=0xFF00FF00;
+        RasterFrame threeColors=RasterFrame.wrap(3,1,new int[]{RED,BLUE,green});
+        RasterFrame sampledThree=RasterSupersampler.upsample(threeColors,4);
+        for (int index=0;index<sampledThree.getOwnedPixels().length;index++) {
+            int color=sampledThree.getOwnedPixels()[index];
+            if (color!=RED&&color!=BLUE&&color!=green) {
+                throw new AssertionError("unexpected color "+Integer.toHexString(color));
+            }
+        }
+        RasterFrame twoColors=RasterFrame.wrap(3,1,new int[]{RED,BLUE,RED});
+        RasterFrame sampledTwo=RasterSupersampler.upsample(twoColors,4);
+        for (int index=0;index<sampledTwo.getOwnedPixels().length;index++) {
+            int color=sampledTwo.getOwnedPixels()[index];
+            if (color!=RED&&color!=BLUE) {
+                throw new AssertionError("unexpected color "+Integer.toHexString(color));
+            }
+        }
+    }
+
+    @Test
     public void shouldSkipFramesThatExceedThePaletteLimit() {
         int[] pixels=new int[257];
         for (int index=0;index<pixels.length;index++) {
