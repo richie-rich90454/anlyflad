@@ -27,6 +27,9 @@ import com.anlyflad.core.svg.SvgParseException;
 @Command(name="anlyflad", mixinStandardHelpOptions=true, version="1.0.0", description="Convert PNG, JPEG, and SVG files to SVG.")
 public final class AnlyfladCli {
     static {
+        java.util.Locale.setDefault(java.util.Locale.Category.DISPLAY, java.util.Locale.ENGLISH);
+        java.util.Locale.setDefault(java.util.Locale.Category.FORMAT, java.util.Locale.ENGLISH);
+        java.util.Locale.setDefault(java.util.Locale.ENGLISH);
         com.anlyflad.core.raster.ColorCurveVectorizer.setParallelRunner(new JvmParallelRunner());
     }
     private static final int USER_ERROR=1;
