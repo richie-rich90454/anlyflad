@@ -2,6 +2,7 @@ package com.anlyflad.core.geometry;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -80,6 +81,22 @@ public final class CubicBezierFitterTest {
         assertEquals(teeth*2+3,segments.size());
         assertTrue(fitter.getLastError()<=1.0e-12);
     }
+    @Test
+    public void shouldProduceIdenticalCurvesWithAndWithoutTopologyCheck() {
+        double[] ring=new double[64*2];
+        for (int index=0;index<64;index++) {
+            double angle=2.0*Math.PI*index/64.0;
+            ring[index*2]=100.0+50.0*Math.cos(angle);
+            ring[index*2+1]=100.0+50.0*Math.sin(angle);
+        }
+        List<double[]> checked=new CubicBezierFitter(0.05).fit(ring);
+        List<double[]> unchecked=new CubicBezierFitter(0.05).fitUnchecked(ring);
+        assertEquals(checked.size(),unchecked.size());
+        for (int index=0;index<checked.size();index++) {
+            assertArrayEquals(checked.get(index),unchecked.get(index),0.0);
+        }
+    }
+
     @Test
     public void shouldRejectDegenerateAndSelfIntersectingRings() {
         assertThrows(IllegalArgumentException.class,() -> CubicBezierFitter.fit(new double[]{0.0,0.0,1.0,0.0,2.0,0.0},0.1));
