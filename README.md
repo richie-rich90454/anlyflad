@@ -1,19 +1,66 @@
-# Anlyflad
-Composition-first raster and SVG vectorization studio. The same core pipeline is exposed through a shaded CLI, a Swing desktop application, and a TeaVM browser build.
-## Requirements
-- JDK 25 or newer. The parent POM's Enforcer rule requires `[25,)`.
-- Maven available as `mvn`. There is no Maven wrapper in this repository.
-- Java source and test code is compiled with `release`/`testRelease` 8; that is the bytecode target, not the required build JDK.
+# Anlyflad: Raster and SVG Vectorization for Java 8+
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Runtime: Java 8+](https://img.shields.io/badge/Runtime-Java%208%2B-orange.svg)](#runtime-requirements)
+[![Build: JDK 25+](https://img.shields.io/badge/Build-JDK%2025%2B-blue.svg)](#build)
+
+Anlyflad is a fast, multithreaded raster-to-SVG vectorization studio written in
+pure Java. It converts PNG, JPEG, and SVG files into resolution-independent SVG
+with three vector modes, a continuous quality scale, adaptive color
+quantization, subpixel supersampling, and parallel curve fitting. The same core
+pipeline is exposed through a command-line interface, a Swing desktop
+application, and a TeaVM browser build, plus an all-in-one executable JAR.
+
+Keywords: raster to SVG, image to SVG, PNG to SVG, JPEG to SVG, vectorization,
+vectorizer, image tracing, contour tracing, curve fitting, vector graphics,
+official Java library, CLI, Swing desktop, browser, TeaVM, WebAssembly-ready
+tooling, multithreaded image processing, adaptive color quantization.
+
+## Table of contents
+
+- [Runtime requirements](#runtime-requirements)
+- [Build](#build)
+- [All-in-one JAR](#all-in-one-jar)
+- [CLI quick start](#cli-quick-start)
+- [Desktop quick start](#desktop-quick-start)
+- [Web quick start](#web-quick-start)
+- [Vector modes](#vector-modes)
+- [Quality scale](#quality-scale)
+- [Documentation and fonts](#documentation-and-fonts)
+- [Modules](#modules)
+- [Concurrency](#concurrency)
+- [Input and output behavior](#input-and-output-behavior)
+- [Known limitations](#known-limitations)
+- [Community](#community)
+- [License](#license)
+
+## Runtime requirements
+
+Anlyflad **runs on every Java 8 or newer runtime**. The published classes are
+compiled with `-release 8` and use only Java 8 APIs, so the CLI, the Swing
+desktop application, and the all-in-one JAR work on Java 8, Java 11, Java 17,
+Java 21, Java 25, and later releases. The browser build runs without any JVM.
+
+A newer JDK such as JDK 25 is only needed to **build** the project from source.
+The parent POM enforces JDK 25 for the Maven build, not for running the result.
+
 ## Build
+
 Run commands from the repository root:
+
 ```text
 mvn -o clean verify
 mvn -pl cli -am package
 mvn -pl desktop-swing -am package
 mvn -pl web-teavm -am package
+mvn -pl app -am package
 ```
-`-am` includes `core`, which is required by each application module. Use `-o` for fully offline Maven builds; all dependencies are expected in the local repository.
+
+`-am` includes `core`, which every application module depends on. `-o` runs
+fully offline from the local Maven repository.
+
 Expected outputs:
+
 | Module | Output |
 |---|---|
 | `core` | `core/target/anlyflad-core-1.0.0.jar` and test classes |
@@ -21,84 +68,178 @@ Expected outputs:
 | `desktop-swing` | `desktop-swing/target/anlyflad-desktop.jar`, shaded with its dependencies |
 | `web-teavm` | `web-teavm/target/webapp/` with `index.html`, `docs.html`, `anlyflad.js`, fonts, docs, favicons, and the web manifest |
 | `app` | `app/target/anlyflad.jar`, the all-in-one fat JAR |
+
 ## All-in-one JAR
+
 ```text
 mvn -pl app -am package
-java -jar app/target/anlyflad.jar                  # CLI help and CLI conversion mode
+
+java -jar app/target/anlyflad.jar
 java -jar app/target/anlyflad.jar input.png -o output.svg
-java -jar app/target/anlyflad.jar --desktop        # Swing desktop UI
-java -jar app/target/anlyflad.jar --web            # embedded web server on port 8080
+java -jar app/target/anlyflad.jar --desktop
+java -jar app/target/anlyflad.jar --web
 java -jar app/target/anlyflad.jar --web --port 9000
 ```
-The fat JAR bundles the core, CLI, Swing desktop, TeaVM web assets, documentation, and Noto Sans fonts. `--web` serves the browser UI at `http://127.0.0.1:8080/` and the documentation at `http://127.0.0.1:8080/docs.html`; no external files or CDNs are required.
+
+- With no arguments, the JAR prints the CLI help.
+- With input and output arguments, it runs the CLI conversion.
+- `--desktop` launches the Swing desktop application.
+- `--web` starts an embedded static server on `http://127.0.0.1:8080/`, with
+  the browser application at `/` and the documentation at `/docs.html`.
+- `--port N` selects a different port.
+
+The fat JAR bundles the core, CLI, desktop, web assets, documentation, and Noto
+Sans fonts. It has no external runtime dependencies and makes no CDN requests.
+
 ## CLI quick start
+
 ```text
-java -jar cli/target/anlyflad-cli.jar input.png --output output.svg
-java -jar cli/target/anlyflad-cli.jar input.png --output output.svg --mode binary
-java -jar cli/target/anlyflad-cli.jar input.png --output output.svg --vector-mode curve --scale 75
-java -jar cli/target/anlyflad-cli.jar input.png --output output.svg --scale draft --stage quantize.maxColors=4
-java -jar cli/target/anlyflad-cli.jar input.png --output output.svg --stage vectorize.outputScale=2
+java -jar app/target/anlyflad.jar input.png --output output.svg
+java -jar app/target/anlyflad.jar input.jpg --output output.svg --mode binary
+java -jar app/target/anlyflad.jar input.png --output output.svg --vector-mode curve --scale 75
+java -jar app/target/anlyflad.jar input.png --output output.svg --scale draft
+java -jar app/target/anlyflad.jar input.png --output output.svg --stage vectorize.outputScale=2
+java -jar cli/target/anlyflad-cli.jar input.svg --output output.svg --preset accurate
 ```
-`INPUT` accepts PNG, JPEG, or SVG. `--output/-o` is required and must end in `.svg`; missing parent directories are created. `--scale` accepts `0` to `100` or the aliases `draft` (0), `balanced` (50), and `max` (100).
+
+`INPUT` accepts PNG, JPEG, or SVG. `--output` or `-o` is required and must end
+in `.svg`; missing parent directories are created.
+
 | Option | Behavior |
 |---|---|
 | `--mode MODE` | `color` or `binary` raster mode; default `color` |
 | `--vector-mode MODE` | `exact`, `contour`, or `curve`; default `curve` |
-| `--scale NAME` | Quality scale `0`-`100` or `draft`, `balanced`, `max` |
-| `--preset NAME` | `default`, `clean`, `fast`, or `accurate`; presets tune cleanup stages |
-| `--no-clean` | Skip every `CLEANER` stage in binary mode |
+| `--scale NAME` | Quality scale `0` to `100`, or `draft`, `balanced`, `max` |
+| `--preset NAME` | `default`, `clean`, `fast`, or `accurate` |
+| `--no-clean` | Skip cleaner stages in binary mode |
 | `--stage STAGE.PARAM=VALUE` | Set one typed stage parameter; repeatable |
 | `--no-stage STAGE` | Disable one stage; `validate`, `vectorize`, and `serialize` are protected |
 | `--help` / `--version` | Print help or version `1.0.0` |
-Color mode quantizes to an adaptive palette and vectorizes with the selected vector mode. Exact mode emits one rectangle per visible ARGB run, with no artificial path cap and no vertex budget; contour mode emits simplified polygon regions; curve mode supersamples, traces, and fits cubic curves. Binary mode remains available for compact monochrome output. The CLI prints one tab-separated status line per stage and a final path, dimension, and byte count.
-## Swing quick start
+
+## Desktop quick start
+
 ```text
-java -jar desktop-swing/target/anlyflad-desktop.jar
+java -jar app/target/anlyflad.jar --desktop
 ```
-A graphical environment is required. The window provides a menu bar with Open/Export/Fit/1:1/Zoom shortcuts, a grouped toolbar with raster mode, vector mode, a 0-100 quality slider, cleanup toggle, and view controls, plus a vertical stage inspector with per-parameter hints, validation, and reset-to-defaults. The canvas renders vector results live through `Path2D`, so zooming shows resolution-independent geometry instead of a scaled bitmap. Long pipeline runs show an animated progress bar and elapsed time, and control changes are debounced before rerunning. Sample inputs up to 1 GiB and 100 megapixels are supported. The desktop JAR bundles 16-256 px application icons for window and taskbar display, and forces English locale for dialogs and formatted values.
+
+A graphical environment is required. The window provides a menu bar, a grouped
+toolbar with raster mode, vector mode, a 0 to 100 quality slider, a cleanup
+toggle and view controls, a vertical stage inspector with parameter hints,
+validation and reset, and a live `Path2D` canvas that stays
+resolution-independent when zoomed. Long runs show an animated progress bar and
+elapsed time. The desktop JAR bundles 16 to 256 pixel icons and forces English
+locale for dialogs and formatted values.
+
 ## Web quick start
+
 ```text
 mvn -pl web-teavm -am package
 ```
-Host `web-teavm/target/webapp` as static files. The page accepts `.png`, `.jpg`, `.jpeg`, and `.svg`, provides raster mode, vector mode, a 0-100 quality slider, a pipeline preset, a cleanup toggle, and an output scale, previews the generated SVG in an object URL, and offers `anlyflad.svg` as a download. `index.html` imports the generated ES module and calls `main()`; the page also ships `favicon.svg`, a multi-size `favicon.ico`, PNG favicons, an Apple touch icon, manifest icons, and `site.webmanifest`. No project server is provided; any static host works.
-## Modules
-| Module | Responsibility |
-|---|---|
-| `core` | Document/path value model, raster algorithms, SVG parsing/writing, geometry, stage registry, pipeline, caches, and JMH benchmark sources |
-| `cli` | Picocli command, file loaders, scale/preset validation, stage logger, shaded executable |
-| `desktop-swing` | Swing frame, live canvas, toolbar, stage inspector, documentation window, background pipeline controller, Noto Sans fonts, icons, and desktop loaders |
-| `web-teavm` | TeaVM entry point, JSO browser bridge, static browser pages with favicons/manifest, bundled docs/fonts, and JavaScript packaging |
-| `app` | Launcher dispatch for CLI, `--desktop`, and `--web`, plus the embedded static web server and shaded fat JAR |
-## Vector modes and quality scale
-| Vector mode | Output |
-|---|---|
-| `exact` | One rectangle per visible color run; pixel-faithful, largest output, no path or vertex budget beyond available memory |
-| `contour` | Simplified polygonal color regions traced on a supersampled label grid |
-| `curve` | Supersampled regions fitted to cubic Bezier curves; smooth, resolution-independent output |
-The quality scale drives palette size, supersampling, and curve fitting:
+
+Host `web-teavm/target/webapp` as static files, or run `java -jar
+app/target/anlyflad.jar --web`. The browser application mirrors the desktop
+controls: raster mode, vector mode, quality slider, preset, cleanup toggle,
+output scale, run and view controls, a stage inspector, a live preview, and a
+download link. The generated ES module is loaded and initialized with
+`import { main } from "./anlyflad.js"; main();`. The page ships a scalable
+favicon, a multi-size ICO, PNG and Apple touch icons, a web manifest, and a
+documentation page at `docs.html`.
+
+## Vector modes
+
+| Mode | Output | Best for |
+|---|---|---|
+| `exact` | One rectangle per visible color run, pixel-faithful, no artificial path cap | Lossless pixel-accurate color |
+| `contour` | Simplified polygonal color regions traced on a supersampled label grid | Crisp edges and moderate file sizes |
+| `curve` | Supersampled regions fitted to cubic Bezier curves | Smooth, resolution-independent output |
+
+## Quality scale
+
+The quality scale drives palette size, supersampling, and curve fitting. Low
+values produce tiny SVGs; high values produce the most detailed result.
+
 | Scale | Colors | Supersample | Curve tolerance | Example size (356x359 cartoon) |
 |---|---:|---:|---:|---:|
-| Draft (0) | 6 | 1x | 1.2 px | ~77 KB |
-| Balanced (50, default) | 16 | automatic 1-4x | 0.35 px | ~324 KB |
-| Max (100) | 32 | 4x | 0.05 px | ~573 KB |
-`vectorize.supersample` (0 auto, 1-4) and `vectorize.outputScale` (0.1-16) are also available as stage parameters. `outputScale` scales the exported SVG width/height while keeping the original coordinate system. The writer quantizes coordinates to two decimals, omits default attributes, minifies path commands, packs exact rectangles into `h`/`v` runs, and adds same-color seam strokes to traced regions.
-## Input and output behavior
-- CLI and desktop loaders accept files up to 1 GiB and raster images up to 100 megapixels.
-- The browser adapter rejects files larger than 1 GiB and decoded raster images larger than 100 megapixels, and preserves the source alpha byte.
-- SVG input in color mode is validated against a safe element/reference allowlist and serialized from its original source for lossless passthrough; binary mode parses and runs the cleaner stages.
-- Fully transparent pixels are omitted because they have no visible contribution; hidden RGB values below zero alpha are not serialized.
-- The serialize stage warms the bounded `SvgCache`; CLI, desktop, and web read the cached string for export.
+| Draft, 0 | 6 | 1x | 1.2 px | about 77 KB |
+| Balanced, 50, default | 16 | automatic 1x to 4x | 0.35 px | about 324 KB |
+| Max, 100 | 32 | 4x | 0.05 px | about 573 KB |
+
+`vectorize.supersample` accepts 0 for automatic or 1 to 4.
+`vectorize.outputScale` accepts 0.1 to 16 and scales the exported width and
+height while keeping the original coordinate system. The writer quantizes
+coordinates to two decimals, omits default attributes, minifies commands,
+encodes rectangles compactly, and seals traced-region seams.
+
 ## Documentation and fonts
-- Every module uses bundled **Noto Sans** exclusively (Regular/Medium/Bold, SIL OFL 1.1, license included at `desktop-swing/src/main/resources/fonts/OFL.txt` and `web-teavm/src/main/webapp/fonts/OFL.txt`). The web copies are Latin subsets in WOFF2; the desktop copies are full TTFs loaded and registered at startup. No CDNs are used.
-- Desktop: Help > Documentation (F1) opens a separate window with a page list and Markdown-rendered content.
-- Web: `docs.html` renders the same README, architecture, performance, and TeaVM pages with a client-side Markdown renderer; the page is linked from Help > Documentation.
+
+- Desktop: Help, then Documentation, or press F1. A separate window lists README,
+  Architecture, Performance, and TeaVM pages and renders them as formatted HTML.
+- Web: `docs.html` renders the same bundled pages with client-side Markdown
+  rendering, and is linked from Help, then Documentation.
+- Fonts: every module uses bundled Noto Sans exclusively, with Regular, Medium,
+  and Bold weights and the SIL OFL 1.1 license included. The web copies are
+  Latin-subset WOFF2 files; the desktop copies are full TTFs registered as Swing
+  UI defaults. No CDN or network font is used.
+
+See [docs/architecture.md](docs/architecture.md),
+[docs/performance.md](docs/performance.md), and [docs/teavm.md](docs/teavm.md).
+
+## Modules
+
+| Module | Responsibility |
+|---|---|
+| `core` | Document and path model, raster algorithms, geometry, adaptive quantization, supersampling, contour and curve vectorizers, SVG parser and writer, stages, pipeline, Markdown renderer |
+| `cli` | Picocli command, file loaders, scale and preset validation, stage logger, shaded executable |
+| `desktop-swing` | Swing frame, live canvas, toolbar, stage inspector, documentation window, background pipeline controller, Noto Sans fonts, icons |
+| `web-teavm` | TeaVM entry point, JSO browser bridge, static app and docs pages, fonts, favicons, manifest |
+| `app` | Launcher dispatch for CLI, desktop, and web, embedded static server, shaded all-in-one JAR |
+
 ## Concurrency
-Core stages are synchronous and deterministic. Raster supersampling rows and per-ring curve fitting run through a pluggable `ParallelRunner`: the CLI and desktop install a JVM thread-pool runner, while TeaVM builds keep the sequential runner. Parallel output is byte-identical to sequential output. `parallel` copies use per-thread palette-match caches, and a hidden `anlyflad.sequential` system property forces sequential execution for debugging.
+
+Core stages are synchronous and deterministic. Raster supersampling rows and
+per-ring curve fitting run through a pluggable `ParallelRunner`. The CLI and
+desktop install a JVM thread-pool runner; TeaVM builds keep the sequential
+runner. Parallel output is byte-identical to sequential output. Pass
+`-Danlyflad.sequential=1` to force sequential execution for debugging or
+representative timing.
+
+## Input and output behavior
+
+- CLI and desktop loaders accept files up to 1 GiB and raster images up to 100
+  megapixels.
+- The browser adapter rejects files larger than 1 GiB and decoded raster images
+  larger than 100 megapixels, and preserves the source alpha byte.
+- SVG input in color mode is validated against a safe element and reference
+  allowlist and serialized from its original source for lossless passthrough.
+- Fully transparent pixels are omitted because they have no visible
+  contribution; hidden RGB values below zero alpha are not serialized.
+- The serialize stage warms the bounded `SvgCache`; CLI, desktop, and web read
+  the cached string for export.
+
 ## Known limitations
-- Exact color mode remains path-heavy for noisy photographs because each visible run is preserved. It no longer fails at a fixed 250k path cap; it grows as far as available memory allows.
-- Binary SVG conversion uses the focused parser/writer subset and cannot preserve every SVG feature. Default color mode passes only allowlisted, reference-safe source SVG through unchanged.
-- Browser conversion is synchronous on the browser thread; the page has no Web Worker protocol, though the progress UI covers native runs.
-- The `hole-fix` descriptor advertises a zero minimum, while the implementation requires a positive `maxArea`.
-See [architecture](docs/architecture.md), [performance](docs/performance.md), and [TeaVM notes](docs/teavm.md) for implementation details and verification commands.
+
+- Exact mode remains path-heavy for noisy photographs because every visible run
+  is preserved. It has no fixed 250,000 path cap, but memory is the practical
+  bound.
+- Binary SVG conversion uses a focused parser and writer subset and cannot
+  preserve every SVG feature.
+- Browser conversion is synchronous on the browser thread; there is no Web
+  Worker protocol.
+- The `hole-fix` descriptor advertises a zero minimum while the implementation
+  requires a positive `maxArea`.
+
+## Community
+
+- [Contributing guide](CONTRIBUTING.md)
+- [Code of Conduct](CODE_OF_CONDUCT.md)
+- [Security policy](SECURITY.md) and
+  [private vulnerability reports](https://github.com/richie-rich90454/Anlyflad/security/advisories/new)
+- [Bug reports](https://github.com/richie-rich90454/Anlyflad/issues/new?template=bug_report.yml)
+- [Feature requests](https://github.com/richie-rich90454/Anlyflad/issues/new?template=feature_request.yml)
+- [Discussions](https://github.com/richie-rich90454/Anlyflad/discussions)
+
+Maintainer: [@richie-rich90454](https://github.com/richie-rich90454)
+
 ## License
+
 MIT. Author: Richard Jiang. See [LICENSE](LICENSE).
