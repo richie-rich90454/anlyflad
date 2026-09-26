@@ -27,7 +27,6 @@ public final class VectorCanvas extends JPanel {
     private final MouseHandler mouseHandler;
     private VectorDocument document;
     private BufferedImage rasterImage;
-    private BufferedImage vectorPreview;
     private double zoom=1.0;
     private double panX;
     private double panY;
@@ -45,6 +44,37 @@ public final class VectorCanvas extends JPanel {
         addMouseWheelListener(mouseHandler);
         addMouseListener(mouseHandler);
         addMouseMotionListener(mouseHandler);
+        installKeyBindings();
+    }
+    private void installKeyBindings() {
+        getInputMap(WHEN_IN_FOCUSED_WINDOW).put(javax.swing.KeyStroke.getKeyStroke("control 0"), "fit");
+        getInputMap(WHEN_IN_FOCUSED_WINDOW).put(javax.swing.KeyStroke.getKeyStroke("control 1"), "actual");
+        getInputMap(WHEN_IN_FOCUSED_WINDOW).put(javax.swing.KeyStroke.getKeyStroke("control EQUALS"), "zoomIn");
+        getInputMap(WHEN_IN_FOCUSED_WINDOW).put(javax.swing.KeyStroke.getKeyStroke("control MINUS"), "zoomOut");
+        getActionMap().put("fit", new javax.swing.AbstractAction() {
+            private static final long serialVersionUID=1L;
+            public void actionPerformed(java.awt.event.ActionEvent event) {
+                fitToViewport();
+            }
+        });
+        getActionMap().put("actual", new javax.swing.AbstractAction() {
+            private static final long serialVersionUID=1L;
+            public void actionPerformed(java.awt.event.ActionEvent event) {
+                showActualSize();
+            }
+        });
+        getActionMap().put("zoomIn", new javax.swing.AbstractAction() {
+            private static final long serialVersionUID=1L;
+            public void actionPerformed(java.awt.event.ActionEvent event) {
+                zoomAt(getWidth()/2, getHeight()/2, 1.25);
+            }
+        });
+        getActionMap().put("zoomOut", new javax.swing.AbstractAction() {
+            private static final long serialVersionUID=1L;
+            public void actionPerformed(java.awt.event.ActionEvent event) {
+                zoomAt(getWidth()/2, getHeight()/2, 0.8);
+            }
+        });
     }
     public void setDocument(VectorDocument document) {
         setDocument(document, document!=null&&document.getOrigin().isRaster()&&document.getPaths().isEmpty());
@@ -61,13 +91,8 @@ public final class VectorCanvas extends JPanel {
     private void setDocument(VectorDocument document, boolean showRaster, boolean rasterFallback) {
         this.document=document;
         rasterImage=null;
-        vectorPreview=null;
-        if (document!=null&&document.getWidth()>0&&document.getHeight()>0) {
-            if (showRaster) {
-                rasterImage=createRasterImage(document);
-            } else if (document.getOrigin().isRaster()&&document.getPaths().size()>0) {
-                vectorPreview=renderVectorPreview(document);
-            }
+        if (document!=null&&document.getWidth()>0&&document.getHeight()>0&&showRaster) {
+            rasterImage=createRasterImage(document);
         }
         if (getWidth()>0&&getHeight()>0) {
             fitToViewport();
@@ -79,28 +104,17 @@ public final class VectorCanvas extends JPanel {
         image.setRGB(0, 0, document.getWidth(), document.getHeight(), document.getOwnedPixels(), 0, document.getWidth());
         return image;
     }
-    private BufferedImage renderVectorPreview(VectorDocument document) {
-        BufferedImage image=new BufferedImage(document.getWidth(), document.getHeight(), BufferedImage.TYPE_INT_ARGB);
-        Graphics2D graphics=image.createGraphics();
-        try {
-            graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, hasCubicData(document)?RenderingHints.VALUE_ANTIALIAS_ON:RenderingHints.VALUE_ANTIALIAS_OFF);
-            for (int index=0;index<document.getPaths().size();index++) {
-                fillPath(graphics, document.getPaths().get(index));
-            }
-        } finally {
-            graphics.dispose();
-        }
-        return image;
-    }
     public VectorDocument getDocument() {
         return document;
     }
     public void fitToViewport() {
+        double previous=zoom;
         if (document==null||document.getWidth()<=0||document.getHeight()<=0) {
             zoom=1.0;
             panX=0.0;
             panY=0.0;
             repaint();
+            firePropertyChange("zoom", previous, zoom);
             return;
         }
         int availableWidth=Math.max(1, getWidth()-MARGIN*2);
@@ -112,17 +126,31 @@ public final class VectorCanvas extends JPanel {
         panX=(getWidth()-document.getWidth()*zoom)/2.0;
         panY=(getHeight()-document.getHeight()*zoom)/2.0;
         repaint();
+        firePropertyChange("zoom", previous, zoom);
+    }
+    public void showActualSize() {
+        if (document==null||document.getWidth()<=0||document.getHeight()<=0) {
+            return;
+        }
+        double previous=zoom;
+        zoom=1.0;
+        panX=(getWidth()-document.getWidth())/2.0;
+        panY=(getHeight()-document.getHeight())/2.0;
+        repaint();
+        firePropertyChange("zoom", previous, zoom);
     }
     public void setZoom(double value) {
         if (!Double.isFinite(value)||value<=0.0) {
             throw new IllegalArgumentException("zoom must be finite and positive");
         }
+        double previous=zoom;
         double centerX=panX+getWidth()/(2.0*zoom);
         double centerY=panY+getHeight()/(2.0*zoom);
         zoom=clamp(value);
         panX=centerX-getWidth()/(2.0*zoom);
         panY=centerY-getHeight()/(2.0*zoom);
         repaint();
+        firePropertyChange("zoom", previous, zoom);
     }
     public double getZoom() {
         return zoom;
@@ -137,12 +165,14 @@ public final class VectorCanvas extends JPanel {
         if (!Double.isFinite(factor)||factor<=0.0) {
             throw new IllegalArgumentException("zoom factor must be finite and positive");
         }
+        double previous=zoom;
         double worldX=(anchorX-panX)/zoom;
         double worldY=(anchorY-panY)/zoom;
         zoom=clamp(zoom*factor);
         panX=anchorX-worldX*zoom;
         panY=anchorY-worldY*zoom;
         repaint();
+        firePropertyChange("zoom", previous, zoom);
     }
     protected void paintComponent(java.awt.Graphics graphics) {
         super.paintComponent(graphics);
@@ -174,8 +204,11 @@ public final class VectorCanvas extends JPanel {
         graphics.setColor(DesktopTheme.MUTED_TEXT);
         graphics.setFont(DesktopTheme.BODY_FONT);
         metrics=graphics.getFontMetrics();
-        String detail="PNG, JPEG, and SVG";
+        String detail="Open PNG, JPEG, or SVG with Ctrl+O";
         graphics.drawString(detail, (getWidth()-metrics.stringWidth(detail))/2, titleY+24);
+        graphics.setColor(DesktopTheme.MUTED_TEXT);
+        String hint="Scroll to zoom. Drag to pan.";
+        graphics.drawString(hint, (getWidth()-metrics.stringWidth(hint))/2, titleY+46);
     }
     private void drawDocument(Graphics2D graphics) {
         Rectangle2D page=new Rectangle2D.Double(panX, panY, document.getWidth()*zoom, document.getHeight()*zoom);
@@ -186,17 +219,11 @@ public final class VectorCanvas extends JPanel {
         try {
             transformed.translate(panX, panY);
             transformed.scale(zoom, zoom);
-            if (document.getOrigin().isRaster()) {
-                transformed.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
-            }
             if (rasterImage!=null) {
+                transformed.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
                 Object interpolation=zoom>=2.0?RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR:RenderingHints.VALUE_INTERPOLATION_BILINEAR;
                 transformed.setRenderingHint(RenderingHints.KEY_INTERPOLATION, interpolation);
                 transformed.drawImage(rasterImage, 0, 0, null);
-            } else if (vectorPreview!=null) {
-                Object interpolation=zoom>=2.0?RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR:RenderingHints.VALUE_INTERPOLATION_BILINEAR;
-                transformed.setRenderingHint(RenderingHints.KEY_INTERPOLATION, interpolation);
-                transformed.drawImage(vectorPreview, 0, 0, null);
             } else {
                 drawVectorPaths(transformed);
             }
@@ -229,6 +256,7 @@ public final class VectorCanvas extends JPanel {
         }
     }
     private void drawVectorPaths(Graphics2D graphics) {
+        graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         for (int index=0;index<document.getPaths().size();index++) {
             VectorPath path=document.getPaths().get(index);
             Path2D.Double shape=shape(path);
@@ -240,10 +268,6 @@ public final class VectorCanvas extends JPanel {
             }
         }
         graphics.setComposite(AlphaComposite.SrcOver);
-    }
-    private void fillPath(Graphics2D graphics, VectorPath path) {
-        setPathStyle(graphics, path);
-        graphics.fill(shape(path));
     }
     private void setPathStyle(Graphics2D graphics, VectorPath path) {
         graphics.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, (float)path.getOpacity()));
@@ -273,14 +297,6 @@ public final class VectorCanvas extends JPanel {
             }
         }
         return shape;
-    }
-    private static boolean hasCubicData(VectorDocument document) {
-        for (int index=0;index<document.getPaths().size();index++) {
-            if (document.getPaths().get(index).hasCubicData()) {
-                return true;
-            }
-        }
-        return false;
     }
     private static double clamp(double value) {
         return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, value));
