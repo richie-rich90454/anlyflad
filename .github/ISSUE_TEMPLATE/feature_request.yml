@@ -1,0 +1,56 @@
+name: Feature request
+description: Suggest an improvement or new capability for Anlyflad
+title: "[Feature]: "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement. Please search existing issues and
+        discussions first.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: What are you trying to do, and what makes it hard today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the behavior, API, parameter, or UI you would like.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: dropdown
+    id: module
+    attributes:
+      label: Target component
+      options:
+        - Core library
+        - CLI
+        - Desktop (Swing)
+        - Web (TeaVM)
+        - All-in-one JAR
+        - Documentation
+        - Build or release tooling
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Examples, mockups, related tools, or references.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and discussions and this is not a duplicate.
+          required: true
+        - label: This request fits the project scope and does not require private data.
+          required: true
