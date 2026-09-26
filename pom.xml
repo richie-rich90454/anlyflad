@@ -20,6 +20,7 @@
         <module>cli</module>
         <module>desktop-swing</module>
         <module>web-teavm</module>
+        <module>app</module>
     </modules>
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
@@ -38,6 +39,21 @@
             <dependency>
                 <groupId>com.anlyflad</groupId>
                 <artifactId>anlyflad-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.anlyflad</groupId>
+                <artifactId>anlyflad-cli</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.anlyflad</groupId>
+                <artifactId>anlyflad-desktop</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.anlyflad</groupId>
+                <artifactId>anlyflad-web</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
