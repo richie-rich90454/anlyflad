@@ -18,14 +18,17 @@
         <dependency>
             <groupId>org.teavm</groupId>
             <artifactId>teavm-core</artifactId>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.teavm</groupId>
             <artifactId>teavm-jso</artifactId>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.teavm</groupId>
             <artifactId>teavm-classlib</artifactId>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
     <build>
@@ -46,6 +49,42 @@
                             <resources>
                                 <resource>
                                     <directory>src/main/webapp</directory>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>copy-docs</id>
+                        <phase>process-classes</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/webapp/docs</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${project.basedir}/../docs</directory>
+                                </resource>
+                                <resource>
+                                    <directory>${project.basedir}/..</directory>
+                                    <includes>
+                                        <include>README.md</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>copy-webapp-into-jar</id>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.outputDirectory}/webapp</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${project.build.directory}/webapp</directory>
                                 </resource>
                             </resources>
                         </configuration>
