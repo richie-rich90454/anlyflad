@@ -5,8 +5,8 @@ import com.anlyflad.core.model.Color;
 import com.anlyflad.core.model.PathId;
 import com.anlyflad.core.model.VectorPath;
 public final class ColorRasterVectorizer {
-    public static final int DEFAULT_MAX_PATHS=250000;
-    public static final int MAX_PATHS=1000000;
+    public static final int DEFAULT_MAX_PATHS=Integer.MAX_VALUE;
+    public static final int MAX_PATHS=Integer.MAX_VALUE;
     private ColorRasterVectorizer() {
     }
     public static List<VectorPath> vectorize(RasterFrame frame) {
