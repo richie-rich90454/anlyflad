@@ -30,6 +30,7 @@ import javax.swing.Timer;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import com.anlyflad.core.model.VectorDocument;
 import com.anlyflad.core.stage.PipelineConfig;
+import com.anlyflad.core.stage.QualityScale;
 import com.anlyflad.core.stage.StageRegistry;
 public final class VectoriumFrame extends JFrame {
     private static final long serialVersionUID=1L;
@@ -225,7 +226,8 @@ public final class VectoriumFrame extends JFrame {
     }
     private void updatePipeline() {
         PipelineConfig base=PipelineConfig.defaults().withPreset(toolbar.getPreset()).withRasterMode(toolbar.getRasterMode()).withVectorMode(toolbar.getVectorMode()).withClean(toolbar.isClean());
-        PipelineConfig configured=stageInspector.applyTo(base).withStageValue("vectorize", "mode", toolbar.getVectorMode().getOptionName()).withStageValue("vectorize", "quality", toolbar.getQuality());
+        int quality=toolbar.getQuality();
+        PipelineConfig configured=stageInspector.applyTo(base).withStageValue("vectorize", "mode", toolbar.getVectorMode().getOptionName()).withStageValue("vectorize", "quality", Integer.toString(quality)).withStageValue("quantize", "maxColors", Integer.toString(QualityScale.maxColors(quality)));
         controller.setConfig(configured);
         controller.runPipeline();
     }
