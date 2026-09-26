@@ -21,7 +21,14 @@ public final class ColorCurveVectorizer {
     private static final double MAX_CORNER_RADIUS=2.0;
     private static final double KAPPA=0.5522847498307936;
     private static final double MIN_DISTANCE=1.0e-9;
+    private static volatile ParallelRunner parallelRunner=ParallelRunner.SEQUENTIAL;
     private ColorCurveVectorizer() {
+    }
+
+    public static void setParallelRunner(ParallelRunner runner) {
+        ParallelRunner resolved=runner==null?ParallelRunner.SEQUENTIAL:runner;
+        parallelRunner=resolved;
+        RasterSupersampler.setParallelRunner(resolved);
     }
 
     public static List<VectorPath> vectorize(RasterFrame frame) {
@@ -115,16 +122,44 @@ public final class ColorCurveVectorizer {
         return fitPaths(ColorContourVectorizer.vectorizeForeground(width, height, argb, maxPaths, maxVertices), tolerance, 1);
     }
 
-    private static List<VectorPath> fitPaths(List<VectorPath> paths, double tolerance, int scale) {
-        List<VectorPath> fitted=new ArrayList<VectorPath>(paths.size());
-        double simplificationTolerance=rasterSimplificationTolerance(tolerance, scale);
-        for (int pathIndex=0;pathIndex<paths.size();pathIndex++) {
+    private static List<VectorPath> fitPaths(final List<VectorPath> paths, final double tolerance, int scale) {
+        int pathCount=paths.size();
+        if (pathCount==0) {
+            return new ArrayList<VectorPath>();
+        }
+        final double simplificationTolerance=rasterSimplificationTolerance(tolerance, scale);
+        final double[][][] ringSources=new double[pathCount][][];
+        final int[] ringCounts=new int[pathCount];
+        int totalRings=0;
+        for (int pathIndex=0;pathIndex<pathCount;pathIndex++) {
+            ringSources[pathIndex]=paths.get(pathIndex).getRingCoordinates();
+            ringCounts[pathIndex]=ringSources[pathIndex].length;
+            totalRings+=ringCounts[pathIndex];
+        }
+        final FittedRing[][] results=new FittedRing[pathCount][];
+        for (int pathIndex=0;pathIndex<pathCount;pathIndex++) {
+            results[pathIndex]=new FittedRing[ringCounts[pathIndex]];
+        }
+        if (totalRings>0) {
+            parallelRunner.run(totalRings,new ParallelRunner.Task() {
+                public void run(int taskIndex) {
+                    int pathIndex=0;
+                    int ringIndex=taskIndex;
+                    while (ringIndex>=ringCounts[pathIndex]) {
+                        ringIndex-=ringCounts[pathIndex];
+                        pathIndex++;
+                    }
+                    results[pathIndex][ringIndex]=fitRasterRing(ringSources[pathIndex][ringIndex],tolerance,simplificationTolerance);
+                }
+            });
+        }
+        List<VectorPath> fitted=new ArrayList<VectorPath>(pathCount);
+        for (int pathIndex=0;pathIndex<pathCount;pathIndex++) {
             VectorPath path=paths.get(pathIndex);
-            double[][] sourceRings=path.getRingCoordinates();
-            List<double[]> fallbackRings=new ArrayList<double[]>(sourceRings.length);
-            double[][] cubic=new double[sourceRings.length][];
-            for (int ringIndex=0;ringIndex<sourceRings.length;ringIndex++) {
-                FittedRing fittedRing=fitRasterRing(sourceRings[ringIndex],tolerance,simplificationTolerance);
+            List<double[]> fallbackRings=new ArrayList<double[]>(ringCounts[pathIndex]);
+            double[][] cubic=new double[ringCounts[pathIndex]][];
+            for (int ringIndex=0;ringIndex<ringCounts[pathIndex];ringIndex++) {
+                FittedRing fittedRing=results[pathIndex][ringIndex];
                 fallbackRings.add(fittedRing.fallback);
                 cubic[ringIndex]=fittedRing.cubic;
             }
@@ -144,7 +179,7 @@ public final class ColorCurveVectorizer {
         }
         if (polygon.length/2<=MAX_FIT_VERTICES) {
             try {
-                List<double[]> segments=new CubicBezierFitter(tolerance).fit(polygon);
+                List<double[]> segments=new CubicBezierFitter(tolerance).fitUnchecked(polygon);
                 double[] reduced=segmentEndpoints(segments);
                 reduced=cleanRing(reduced);
                 if (reduced.length>=6) {
