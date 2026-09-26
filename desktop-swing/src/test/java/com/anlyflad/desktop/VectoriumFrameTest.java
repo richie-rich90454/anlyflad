@@ -4,6 +4,7 @@ import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.fail;
 import org.junit.jupiter.api.Assumptions;
@@ -26,6 +27,7 @@ public final class VectoriumFrameTest {
             assertEquals(JFrame.DISPOSE_ON_CLOSE, frame.getDefaultCloseOperation());
             assertEquals("Ready", frame.getStatusBar().getStatusText());
             assertEquals(15, frame.getStageInspector().getStageCount());
+            assertFalse(frame.getIconImages().isEmpty());
             assertSame(frame.getCanvas(), frame.getSplitPane().getLeftComponent());
             assertSame(frame.getStageInspector(), frame.getSplitPane().getRightComponent());
             assertSame(frame.getStatusBar(), ((javax.swing.JPanel)frame.getContentPane()).getComponent(2));
