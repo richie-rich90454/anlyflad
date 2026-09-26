@@ -33,6 +33,11 @@ import com.anlyflad.core.stage.PipelineConfig;
 import com.anlyflad.core.stage.StageRegistry;
 public final class VectoriumFrame extends JFrame {
     private static final long serialVersionUID=1L;
+    static {
+        java.util.Locale.setDefault(java.util.Locale.Category.DISPLAY, java.util.Locale.ENGLISH);
+        java.util.Locale.setDefault(java.util.Locale.Category.FORMAT, java.util.Locale.ENGLISH);
+        java.util.Locale.setDefault(java.util.Locale.ENGLISH);
+    }
     private static final double ZOOM_STEP=1.25;
     private final VectorCanvas canvas;
     private final DesktopToolbar toolbar;
