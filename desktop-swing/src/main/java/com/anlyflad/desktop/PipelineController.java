@@ -1,4 +1,6 @@
 package com.anlyflad.desktop;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -11,6 +13,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 import com.anlyflad.core.model.VectorDocument;
 import com.anlyflad.core.stage.BoundedPipelineMemoizer;
 import com.anlyflad.core.stage.Pipeline;
@@ -22,6 +25,9 @@ import com.anlyflad.core.stage.StageException;
 import com.anlyflad.core.stage.StageRegistry;
 import com.anlyflad.core.svg.SvgCache;
 public final class PipelineController {
+    static {
+        com.anlyflad.core.raster.ColorCurveVectorizer.setParallelRunner(new JvmParallelRunner());
+    }
     private final VectorCanvas canvas;
     private final StatusBar statusBar;
     private final DesktopDocumentLoader loader;
@@ -38,6 +44,9 @@ public final class PipelineController {
     private volatile boolean autoRun=true;
     private volatile boolean closed;
     private Runnable documentListener;
+    private final Timer activityTimer;
+    private volatile long activityStarted;
+    private volatile String activityLabel="";
     public PipelineController(VectorCanvas canvas, StatusBar statusBar) {
         if (canvas==null||statusBar==null) {
             throw new IllegalArgumentException("canvas and statusBar must not be null");
@@ -50,6 +59,24 @@ public final class PipelineController {
         registry=new StageRegistry(new SilentPipelineLogger(), memoizer, cache);
         uiLogger=new UiLogger(0L, registry.names().size());
         executor=Executors.newSingleThreadExecutor(new DaemonThreadFactory());
+        activityTimer=new Timer(200, new ActivityHandler());
+        activityTimer.setRepeats(true);
+    }
+    private final class ActivityHandler implements ActionListener {
+        public void actionPerformed(ActionEvent event) {
+            long elapsedMillis=(System.nanoTime()-activityStarted)/1000000L;
+            statusBar.setDetail(activityLabel+" - "+(elapsedMillis/1000L)+"s");
+        }
+    }
+    private void startActivity(String label) {
+        activityLabel=label;
+        activityStarted=System.nanoTime();
+        statusBar.setBusy(true);
+        activityTimer.start();
+    }
+    private void stopActivity() {
+        activityTimer.stop();
+        statusBar.setBusy(false);
     }
     public void load(File file) {
         ensureOpen();
@@ -61,8 +88,7 @@ public final class PipelineController {
         result=null;
         memoizer.clear();
         cache.clear();
-        statusBar.setStatus("Loading "+file.getName());
-        statusBar.setBusy(true);
+        startActivity("Loading "+file.getName());
         notifyDocumentChanged();
         pending=executor.submit(new LoadTask(file, requestId));
     }
@@ -71,8 +97,8 @@ public final class PipelineController {
         if (source==null) {
             return;
         }
-        statusBar.setStatus("Running pipeline");
-        statusBar.setBusy(true);
+        startActivity("Vectorizing");
+        statusBar.setStatus("Vectorizing");
         result=null;
         notifyDocumentChanged();
         long runId=runSequence.incrementAndGet();
@@ -93,8 +119,8 @@ public final class PipelineController {
         if (result==null) {
             throw new IllegalStateException("there is no vector result to export");
         }
+        startActivity("Exporting SVG");
         statusBar.setStatus("Exporting SVG");
-        statusBar.setBusy(true);
         notifyDocumentChanged();
         VectorDocument document=result;
         long exportId=runSequence.incrementAndGet();
@@ -152,6 +178,7 @@ public final class PipelineController {
     }
     public void close() {
         closed=true;
+        activityTimer.stop();
         runSequence.incrementAndGet();
         memoizer.clear();
         cache.clear();
@@ -176,8 +203,8 @@ public final class PipelineController {
                 if (operationId!=runSequence.get()) {
                     return;
                 }
+                stopActivity();
                 statusBar.setStatus("Error: "+errorMessage);
-                statusBar.setBusy(false);
                 notifyDocumentChanged();
             }
         });
@@ -208,8 +235,8 @@ public final class PipelineController {
                             return;
                         }
                         canvas.setDocument(loaded);
+                        stopActivity();
                         statusBar.setStatus("Ready to vectorize");
-                        statusBar.setBusy(false);
                         notifyDocumentChanged();
                         if (autoRun) {
                             runPipeline();
@@ -248,8 +275,8 @@ public final class PipelineController {
                             return;
                         }
                         canvas.setVectorResult(output, runConfig.getRasterMode()==RasterMode.COLOR);
+                        stopActivity();
                         statusBar.setStatus("Vectorization complete");
-                        statusBar.setBusy(false);
                         notifyDocumentChanged();
                     }
                 });
@@ -294,8 +321,8 @@ public final class PipelineController {
                         if (operationId!=runSequence.get()) {
                             return;
                         }
+                        stopActivity();
                         statusBar.setStatus("Exported "+file.getName());
-                        statusBar.setBusy(false);
                         notifyDocumentChanged();
                     }
                 });
