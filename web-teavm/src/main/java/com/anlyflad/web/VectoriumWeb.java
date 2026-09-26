@@ -22,6 +22,7 @@ public final class VectoriumWeb {
     private WebDom.Element fileInput;
     private WebDom.Element modeInput;
     private WebDom.Element vectorModeInput;
+    private WebDom.Element scaleInput;
     private WebDom.Element runButton;
     private WebDom.Element preview;
     private WebDom.Element download;
@@ -37,6 +38,7 @@ public final class VectoriumWeb {
         fileInput=require("file-input");
         modeInput=require("mode-input");
         vectorModeInput=require("vector-mode-input");
+        scaleInput=require("scale-input");
         runButton=require("run-button");
         preview=require("preview");
         download=require("download");
@@ -162,7 +164,11 @@ public final class VectoriumWeb {
         try {
             SvgCache cache=new SvgCache();
             StageRegistry registry=new StageRegistry(new WebLogger(), new BoundedPipelineMemoizer(), cache);
-            PipelineConfig config=PipelineConfig.defaults().withRasterMode(RasterMode.parse(modeInput.getValue())).withVectorMode(VectorMode.parse(vectorModeInput.getValue()));
+            String quality=scaleInput.getValue();
+            if (!"draft".equals(quality)&&!"balanced".equals(quality)&&!"max".equals(quality)) {
+                quality="balanced";
+            }
+            PipelineConfig config=PipelineConfig.defaults().withRasterMode(RasterMode.parse(modeInput.getValue())).withVectorMode(VectorMode.parse(vectorModeInput.getValue())).withStageValue("vectorize", "quality", quality);
             Pipeline pipeline=registry.buildPipeline(config);
             VectorDocument result=pipeline.run(current, config);
             String svg=cache.get(result);
