@@ -41,6 +41,8 @@ public final class AnlyfladCli {
     private String mode="color";
     @Option(names="--vector-mode", paramLabel="MODE", description="Vector mode: exact, contour, or curve.")
     private String vectorMode="curve";
+    @Option(names="--scale", paramLabel="NAME", description="Quality scale: draft, balanced, or max.")
+    private String scale;
     @Option(names="--no-clean", description="Disable cleaner stages.")
     private boolean noClean;
     @Option(names="--stage", paramLabel="STAGE.PARAM=VALUE", description="Override a stage parameter. Repeatable.")
@@ -143,7 +145,15 @@ public final class AnlyfladCli {
     }
     private PipelineConfig createConfiguration() throws UserInputException {
         try {
-            return CliConfiguration.create(!noClean, preset, RasterMode.parse(mode), VectorMode.parse(vectorMode), stageValues, disabledStages);
+            List<String> values=new ArrayList<String>(stageValues);
+            if (scale!=null) {
+                String normalized=scale.trim().toLowerCase(Locale.ROOT);
+                if (!"draft".equals(normalized)&&!"balanced".equals(normalized)&&!"max".equals(normalized)) {
+                    throw new IllegalArgumentException("scale must be draft, balanced, or max");
+                }
+                values.add("vectorize.quality="+normalized);
+            }
+            return CliConfiguration.create(!noClean, preset, RasterMode.parse(mode), VectorMode.parse(vectorMode), values, disabledStages);
         } catch (IllegalArgumentException exception) {
             throw new UserInputException(message(exception), exception);
         }
@@ -162,6 +172,7 @@ public final class AnlyfladCli {
         preset="default";
         mode="color";
         vectorMode="curve";
+        scale=null;
         noClean=false;
         stageValues.clear();
         disabledStages.clear();
