@@ -14,9 +14,13 @@ public final class DesktopTheme {
     public static final Color SUCCESS=new Color(0x397A4B);
     public static final Color WARNING=new Color(0xA96518);
     public static final Color ERROR=new Color(0xB13E3E);
+    public static final Color ACCENT_SOFT=new Color(0xF3DED6);
+    public static final Color SURFACE_ALT=new Color(0xF7F3EA);
+    public static final Font TITLE_FONT=new Font(Font.SANS_SERIF, Font.BOLD, 22);
     public static final Font DISPLAY_FONT=new Font(Font.SANS_SERIF, Font.BOLD, 18);
     public static final Font LABEL_FONT=new Font(Font.SANS_SERIF, Font.BOLD, 12);
     public static final Font BODY_FONT=new Font(Font.SANS_SERIF, Font.PLAIN, 13);
+    public static final Font CAPTION_FONT=new Font(Font.SANS_SERIF, Font.PLAIN, 11);
     private DesktopTheme() {
     }
 }
