@@ -55,5 +55,8 @@ The 1424x1436 upscaled input traced and fitted in about 2.3 s. Times vary with C
 - `HoleFixStage` checks each candidate path against larger paths directly, so its containment work grows quadratically with path count. It has no spatial index.
 - The desktop controller uses one daemon worker for the pipeline plus a JVM thread pool for ring fitting, and shows an indeterminate progress bar plus elapsed time while a run is active. Configuration changes are debounced before rerunning.
 - The web adapter performs SVG parsing and the full pipeline synchronously in browser callbacks; the TeaVM runner is sequential because JavaScript has no true thread pool.
+- `MarkdownRenderer` is a single O(n) pass over the bundled Markdown with no allocation-heavy parsing; the desktop documentation window renders on selection and the web docs page renders on fetch.
+- The shaded `anlyflad.jar` is about 2.2 MB and bundles the CLI, desktop, web assets, docs, and fonts. TeaVM build-time dependencies are `provided` scope and are not shaded into the runtime jar.
+- Desktop fonts are loaded once at class initialization; web fonts are Latin-subset WOFF2 files (~39 KB each) served locally from `target/webapp/fonts` or the embedded server.
 ## Measurement guidance
 Use the same JDK, heap, input, and configuration when comparing changes. Keep the JMH annotation settings for comparable defaults, then pass ordinary JMH options such as `-wi`, `-i`, `-f`, or `-prof` only when intentionally changing the measurement protocol. Treat the synthetic 64x64 setup as a microbenchmark, not as a representative image-size guarantee.

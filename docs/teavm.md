@@ -8,7 +8,16 @@ mvn -pl web-teavm -am package
 The POM binds the TeaVM `compile` goal and the web-resource copy to `process-classes`. Its configured entry point is `com.anlyflad.web.VectoriumWeb`; the target is `JAVASCRIPT`, module format `ES2015`, optimization `ADVANCED`, and minification enabled. The output directory contains:
 ```text
 web-teavm/target/webapp/index.html
+web-teavm/target/webapp/docs.html
 web-teavm/target/webapp/anlyflad.js
+web-teavm/target/webapp/docs/README.md
+web-teavm/target/webapp/docs/architecture.md
+web-teavm/target/webapp/docs/performance.md
+web-teavm/target/webapp/docs/teavm.md
+web-teavm/target/webapp/fonts/NotoSans-400.woff2
+web-teavm/target/webapp/fonts/NotoSans-500.woff2
+web-teavm/target/webapp/fonts/NotoSans-700.woff2
+web-teavm/target/webapp/fonts/OFL.txt
 web-teavm/target/webapp/favicon.svg
 web-teavm/target/webapp/favicon.ico
 web-teavm/target/webapp/favicon-16.png
@@ -46,6 +55,8 @@ The core SVG parser is a manual scanner over the source string, and the path par
 - The adapter creates a fresh `SvgCache` and bounded pipeline memoizer for each conversion, serializes the result, previews it through a browser object URL, and assigns the same URL to the `anlyflad.svg` download.
 - Conversion and serialization are synchronous inside the change/click handlers; the page has no Web Worker or progress protocol.
 - Favicons and the manifest are shipped from `src/main/webapp`, copied unchanged into `target/webapp`, and linked from the page head with legacy ICO, SVG, PNG, Apple touch, and manifest entries.
+- `docs.html` renders the bundled README, architecture, performance, and TeaVM Markdown pages with a small client-side renderer. The page is linked from Help > Documentation and is also served by the all-in-one JAR's `--web` mode.
+- Only bundled Noto Sans is used. Latin-subset WOFF2 files live in `src/main/webapp/fonts` with the SIL OFL license; no external font or CDN request is made.
 ## Web limitations
 - The generated page is a static ES2015 module. The build emits files only; host the `target/webapp` directory with a static file host because no application server is part of the build.
 - The browser adapter checks the 1 GiB file limit, positive dimensions, the 100-megapixel decode limit, and the Java `int` pixel-buffer limit.

@@ -19,7 +19,18 @@ Expected outputs:
 | `core` | `core/target/anlyflad-core-1.0.0.jar` and test classes |
 | `cli` | `cli/target/anlyflad-cli.jar`, shaded with its dependencies |
 | `desktop-swing` | `desktop-swing/target/anlyflad-desktop.jar`, shaded with its dependencies |
-| `web-teavm` | `web-teavm/target/webapp/` with `index.html`, `anlyflad.js`, favicons, and the web manifest |
+| `web-teavm` | `web-teavm/target/webapp/` with `index.html`, `docs.html`, `anlyflad.js`, fonts, docs, favicons, and the web manifest |
+| `app` | `app/target/anlyflad.jar`, the all-in-one fat JAR |
+## All-in-one JAR
+```text
+mvn -pl app -am package
+java -jar app/target/anlyflad.jar                  # CLI help and CLI conversion mode
+java -jar app/target/anlyflad.jar input.png -o output.svg
+java -jar app/target/anlyflad.jar --desktop        # Swing desktop UI
+java -jar app/target/anlyflad.jar --web            # embedded web server on port 8080
+java -jar app/target/anlyflad.jar --web --port 9000
+```
+The fat JAR bundles the core, CLI, Swing desktop, TeaVM web assets, documentation, and Noto Sans fonts. `--web` serves the browser UI at `http://127.0.0.1:8080/` and the documentation at `http://127.0.0.1:8080/docs.html`; no external files or CDNs are required.
 ## CLI quick start
 ```text
 java -jar cli/target/anlyflad-cli.jar input.png --output output.svg
@@ -55,8 +66,9 @@ Host `web-teavm/target/webapp` as static files. The page accepts `.png`, `.jpg`,
 |---|---|
 | `core` | Document/path value model, raster algorithms, SVG parsing/writing, geometry, stage registry, pipeline, caches, and JMH benchmark sources |
 | `cli` | Picocli command, file loaders, scale/preset validation, stage logger, shaded executable |
-| `desktop-swing` | Swing frame, live canvas, toolbar, stage inspector, background pipeline controller, icons, and desktop loaders |
-| `web-teavm` | TeaVM entry point, JSO browser bridge, static browser page with favicons/manifest, and JavaScript packaging |
+| `desktop-swing` | Swing frame, live canvas, toolbar, stage inspector, documentation window, background pipeline controller, Noto Sans fonts, icons, and desktop loaders |
+| `web-teavm` | TeaVM entry point, JSO browser bridge, static browser pages with favicons/manifest, bundled docs/fonts, and JavaScript packaging |
+| `app` | Launcher dispatch for CLI, `--desktop`, and `--web`, plus the embedded static web server and shaded fat JAR |
 ## Vector modes and quality scale
 | Vector mode | Output |
 |---|---|
@@ -76,6 +88,10 @@ The quality scale drives palette size, supersampling, and curve fitting:
 - SVG input in color mode is validated against a safe element/reference allowlist and serialized from its original source for lossless passthrough; binary mode parses and runs the cleaner stages.
 - Fully transparent pixels are omitted because they have no visible contribution; hidden RGB values below zero alpha are not serialized.
 - The serialize stage warms the bounded `SvgCache`; CLI, desktop, and web read the cached string for export.
+## Documentation and fonts
+- Every module uses bundled **Noto Sans** exclusively (Regular/Medium/Bold, SIL OFL 1.1, license included at `desktop-swing/src/main/resources/fonts/OFL.txt` and `web-teavm/src/main/webapp/fonts/OFL.txt`). The web copies are Latin subsets in WOFF2; the desktop copies are full TTFs loaded and registered at startup. No CDNs are used.
+- Desktop: Help > Documentation (F1) opens a separate window with a page list and Markdown-rendered content.
+- Web: `docs.html` renders the same README, architecture, performance, and TeaVM pages with a client-side Markdown renderer; the page is linked from Help > Documentation.
 ## Concurrency
 Core stages are synchronous and deterministic. Raster supersampling rows and per-ring curve fitting run through a pluggable `ParallelRunner`: the CLI and desktop install a JVM thread-pool runner, while TeaVM builds keep the sequential runner. Parallel output is byte-identical to sequential output. `parallel` copies use per-thread palette-match caches, and a hidden `anlyflad.sequential` system property forces sequential execution for debugging.
 ## Known limitations
