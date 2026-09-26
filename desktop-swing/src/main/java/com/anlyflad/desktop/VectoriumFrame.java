@@ -38,6 +38,7 @@ public final class VectoriumFrame extends JFrame {
         java.util.Locale.setDefault(java.util.Locale.Category.DISPLAY, java.util.Locale.ENGLISH);
         java.util.Locale.setDefault(java.util.Locale.Category.FORMAT, java.util.Locale.ENGLISH);
         java.util.Locale.setDefault(java.util.Locale.ENGLISH);
+        DesktopTheme.installUiFonts();
     }
     private static final double ZOOM_STEP=1.25;
     private final VectorCanvas canvas;
@@ -47,6 +48,7 @@ public final class VectoriumFrame extends JFrame {
     private final JSplitPane splitPane;
     private final PipelineController controller;
     private final Timer pipelineDebounce;
+    private DocumentationWindow documentationWindow;
     public VectoriumFrame() {
         super("Anlyflad");
         installIcon();
@@ -210,6 +212,17 @@ public final class VectoriumFrame extends JFrame {
         view.add(zoomOut);
         JMenu help=new JMenu("Help");
         help.setMnemonic(KeyEvent.VK_H);
+        JMenuItem docs=new JMenuItem("Documentation");
+        docs.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F1, 0));
+        docs.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent event) {
+                if (documentationWindow==null||!documentationWindow.isDisplayable()) {
+                    documentationWindow=new DocumentationWindow(VectoriumFrame.this);
+                }
+                documentationWindow.setVisible(true);
+                documentationWindow.toFront();
+            }
+        });
         JMenuItem about=new JMenuItem("About Anlyflad");
         about.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent event) {
@@ -227,6 +240,8 @@ public final class VectoriumFrame extends JFrame {
                     "About Anlyflad", JOptionPane.INFORMATION_MESSAGE);
             }
         });
+        help.add(docs);
+        help.addSeparator();
         help.add(about);
         menuBar.add(file);
         menuBar.add(view);
