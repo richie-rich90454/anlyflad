@@ -28,6 +28,7 @@ public final class DesktopToolbar extends JPanel {
     private final JSlider quality;
     private final JCheckBox clean;
     private final JLabel modeHint;
+    private final JLabel qualityValue;
     private final JLabel zoomLabel;
     private boolean exportAllowed;
     private boolean runAllowed;
@@ -50,6 +51,9 @@ public final class DesktopToolbar extends JPanel {
         modeHint=new JLabel(" ");
         modeHint.setFont(DesktopTheme.CAPTION_FONT);
         modeHint.setForeground(DesktopTheme.MUTED_TEXT);
+        qualityValue=new JLabel("50");
+        qualityValue.setFont(DesktopTheme.LABEL_FONT);
+        qualityValue.setForeground(DesktopTheme.TEXT);
         zoomLabel=new JLabel("100%");
         zoomLabel.setFont(DesktopTheme.LABEL_FONT);
         zoomLabel.setForeground(DesktopTheme.TEXT);
@@ -59,10 +63,11 @@ public final class DesktopToolbar extends JPanel {
         add(createActionGroup(), BorderLayout.WEST);
         add(createSettingsGroup(), BorderLayout.CENTER);
         add(createViewGroup(), BorderLayout.EAST);
-        JPanel hint=new JPanel(new BorderLayout());
-        hint.setOpaque(false);
-        hint.add(modeHint, BorderLayout.CENTER);
-        add(hint, BorderLayout.SOUTH);
+        JPanel south=new JPanel(new BorderLayout(0, 2));
+        south.setOpaque(false);
+        south.add(createQualityGroup(), BorderLayout.NORTH);
+        south.add(modeHint, BorderLayout.SOUTH);
+        add(south, BorderLayout.SOUTH);
         stylePrimary(openButton);
         styleSecondary(exportButton);
         styleAccent(runButton);
@@ -80,12 +85,17 @@ public final class DesktopToolbar extends JPanel {
         preset.setPreferredSize(new Dimension(132, 30));
         mode.setPreferredSize(new Dimension(132, 30));
         vectorMode.setPreferredSize(new Dimension(132, 30));
-        quality.setPreferredSize(new Dimension(170, 44));
+        quality.setPreferredSize(new Dimension(360, 44));
         quality.setBackground(DesktopTheme.SURFACE);
         quality.setMajorTickSpacing(50);
         quality.setMinorTickSpacing(10);
         quality.setPaintTicks(true);
         quality.setPaintLabels(true);
+        quality.addChangeListener(new javax.swing.event.ChangeListener() {
+            public void stateChanged(javax.swing.event.ChangeEvent event) {
+                qualityValue.setText(Integer.toString(quality.getValue()));
+            }
+        });
         openButton.getAccessibleContext().setAccessibleName("Open image");
         exportButton.getAccessibleContext().setAccessibleName("Export SVG");
         runButton.getAccessibleContext().setAccessibleName("Run pipeline");
@@ -120,7 +130,6 @@ public final class DesktopToolbar extends JPanel {
         group.add(field("Preset", preset));
         group.add(field("Raster mode", mode));
         group.add(field("Vector mode", vectorMode));
-        group.add(field("Scale", quality));
         JPanel cleanField=new JPanel();
         cleanField.setOpaque(false);
         cleanField.setLayout(new BoxLayout(cleanField, BoxLayout.Y_AXIS));
@@ -133,6 +142,21 @@ public final class DesktopToolbar extends JPanel {
         clean.setBackground(DesktopTheme.SURFACE);
         clean.setForeground(DesktopTheme.TEXT);
         group.add(cleanField);
+        return group;
+    }
+    private JPanel createQualityGroup() {
+        JPanel group=new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        group.setOpaque(false);
+        JLabel caption=new JLabel("Quality scale");
+        caption.setFont(DesktopTheme.CAPTION_FONT);
+        caption.setForeground(DesktopTheme.MUTED_TEXT);
+        JLabel range=new JLabel("0 = smallest, 100 = most detailed");
+        range.setFont(DesktopTheme.CAPTION_FONT);
+        range.setForeground(DesktopTheme.MUTED_TEXT);
+        group.add(caption);
+        group.add(quality);
+        group.add(qualityValue);
+        group.add(range);
         return group;
     }
     private JPanel createViewGroup() {
