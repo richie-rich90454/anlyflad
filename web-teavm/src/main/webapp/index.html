@@ -68,7 +68,10 @@
   .field>label{display:block;font-weight:600;font-size:14px;margin-bottom:6px}
   select{width:100%;border:1px solid #5c574d;border-radius:2px;padding:9px 10px;background:#1a1815;color:var(--paper);font:inherit}
   input[type=range]{width:100%;margin:6px 0 2px;accent-color:var(--accent)}
+  input[type=number]{width:100%;border:1px solid #5c574d;border-radius:2px;padding:9px 10px;background:#1a1815;color:var(--paper);font:inherit}
   .scale-readout{font:600 13px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#e9e3d6}
+  .check{display:flex;align-items:center;gap:9px;font-weight:600;font-size:14px}
+  .check input{width:18px;height:18px;accent-color:var(--accent)}
   .hint{margin-top:8px;font-size:12.5px;line-height:1.55;color:var(--rail-muted)}
   .hint b{color:#e9e3d6;font-weight:600}
 
@@ -89,6 +92,8 @@
   #preview[src]:not([src=""]){display:block}
   #preview[src]:not([src=""])+ .empty{display:none}
   .empty{margin:auto;max-width:36ch;color:var(--muted);font-size:14px;line-height:1.6;text-align:center}
+  .about{margin-top:34px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:13px;line-height:1.7}
+  .about strong{color:var(--ink)}
 
   @media (prefers-reduced-motion:reduce){
     *{transition:none!important}
@@ -138,6 +143,25 @@
           <div class="scale-readout"><span id="scale-value">50</span> / 100</div>
           <p class="hint" id="scale-hint">0 gives the smallest SVG (fewer colors, no supersampling, simpler curves). 100 gives the largest, most detailed SVG (32 colors, 4x supersampling, tightest curve fit).</p>
         </div>
+        <div class="field">
+          <label for="preset-input">Pipeline preset</label>
+          <select id="preset-input" aria-describedby="preset-hint">
+            <option value="default">Default</option>
+            <option value="clean">Clean</option>
+            <option value="fast">Fast</option>
+            <option value="accurate">Accurate</option>
+          </select>
+          <p class="hint" id="preset-hint">Presets tune the binary cleanup stages: simplify tolerance, smoothing passes, and dedupe tolerance.</p>
+        </div>
+        <div class="field">
+          <label for="output-scale-input">Output scale</label>
+          <input id="output-scale-input" type="number" min="0.1" max="16" step="0.1" value="1">
+          <p class="hint">Multiplies exported SVG width and height while keeping the original coordinate system (0.1 to 16).</p>
+        </div>
+        <div class="field">
+          <label class="check" for="clean-input"><input id="clean-input" type="checkbox" checked> Clean output</label>
+          <p class="hint">Runs cleaner stages during binary-mode conversion.</p>
+        </div>
       </section>
       <section class="block" aria-labelledby="run-heading">
         <h2 id="run-heading"><span class="step">03</span>Vectorize</h2>
@@ -155,6 +179,11 @@
       </div>
     </section>
   </div>
+  <footer class="about">
+    <p><strong>Anlyflad 1.0.0</strong> · Author: Richard Jiang · License: MIT</p>
+    <p>Raster modes: Color, Binary · Vector modes: Exact runs, Contour, Curves · Quality scale 0-100 · Supersample 0-4 · Output scale 0.1-16</p>
+    <p>Load a PNG, JPEG, or SVG, tune the controls, then press Vectorize and download the result as SVG.</p>
+  </footer>
 </main>
 <script>
 (function () {
