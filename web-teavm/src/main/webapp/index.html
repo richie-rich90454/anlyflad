@@ -67,6 +67,8 @@
   .field:last-child{margin-bottom:0}
   .field>label{display:block;font-weight:600;font-size:14px;margin-bottom:6px}
   select{width:100%;border:1px solid #5c574d;border-radius:2px;padding:9px 10px;background:#1a1815;color:var(--paper);font:inherit}
+  input[type=range]{width:100%;margin:6px 0 2px;accent-color:var(--accent)}
+  .scale-readout{font:600 13px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#e9e3d6}
   .hint{margin-top:8px;font-size:12.5px;line-height:1.55;color:var(--rail-muted)}
   .hint b{color:#e9e3d6;font-weight:600}
 
@@ -132,12 +134,9 @@
         </div>
         <div class="field">
           <label for="scale-input">Quality scale</label>
-          <select id="scale-input" aria-describedby="scale-hint">
-            <option value="draft">Draft — smallest</option>
-            <option value="balanced" selected>Balanced</option>
-            <option value="max">Max — smoothest</option>
-          </select>
-          <p class="hint" id="scale-hint"><b>Draft</b> reduces supersampling and simplifies curves. <b>Balanced</b> is the default. <b>Max</b> supersamples 4x with the tightest tolerance.</p>
+          <input id="scale-input" type="range" min="0" max="100" step="1" value="50" aria-describedby="scale-hint">
+          <div class="scale-readout"><span id="scale-value">50</span> / 100</div>
+          <p class="hint" id="scale-hint">0 gives the smallest SVG (fewer colors, no supersampling, simpler curves). 100 gives the largest, most detailed SVG (32 colors, 4x supersampling, tightest curve fit).</p>
         </div>
       </section>
       <section class="block" aria-labelledby="run-heading">
@@ -209,7 +208,20 @@
       event.preventDefault();
     }
   });
+  var scale = document.getElementById('scale-input');
+  var scaleValue = document.getElementById('scale-value');
+  if (scale && scaleValue) {
+    var syncScale = function () {
+      scaleValue.textContent = scale.value;
+    };
+    scale.addEventListener('input', syncScale);
+    syncScale();
+  }
 })();
+</script>
+<script type="module">
+import { main } from "./anlyflad.js";
+main();
 </script>
 </body>
 </html>
