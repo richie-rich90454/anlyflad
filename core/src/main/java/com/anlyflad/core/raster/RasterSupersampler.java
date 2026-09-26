@@ -9,9 +9,19 @@ public final class RasterSupersampler {
     public static final long MAX_SUPERSAMPLED_PIXELS=1L<<25;
     public static final int MAX_PALETTE_COLORS=256;
     private static final int PALETTE_SLOT_COUNT=512;
-    private static final int MATCH_CACHE_SIZE=1<<20;
+    private static final int MATCH_CACHE_SIZE=1<<18;
+    private static final ThreadLocal<long[]> MATCH_CACHE=new ThreadLocal<long[]>() {
+        protected long[] initialValue() {
+            return new long[MATCH_CACHE_SIZE];
+        }
+    };
+    private static volatile ParallelRunner parallelRunner=ParallelRunner.SEQUENTIAL;
 
     private RasterSupersampler() {
+    }
+
+    public static void setParallelRunner(ParallelRunner runner) {
+        parallelRunner=runner==null?ParallelRunner.SEQUENTIAL:runner;
     }
 
     public static int scaleFor(int width,int height) {
@@ -47,6 +57,7 @@ public final class RasterSupersampler {
         if (palette==null) {
             return frame;
         }
+        java.util.Arrays.fill(MATCH_CACHE.get(),0L);
         int width=frame.getWidth();
         int height=frame.getHeight();
         long targetLength=(long)width*scale*(long)height*scale;
@@ -55,56 +66,62 @@ public final class RasterSupersampler {
         }
         int targetWidth=width*scale;
         int targetHeight=height*scale;
-        int[] source=frame.getOwnedPixels();
-        int[] target=new int[(int)targetLength];
-        int[] matches=new int[MATCH_CACHE_SIZE];
-        double step=1.0/scale;
-        for (int y=0;y<targetHeight;y++) {
-            double sourceY=(y+0.5)*step-0.5;
-            int top=(int)Math.floor(sourceY);
-            double verticalWeight=sourceY-top;
-            int topRow=clamp(top,0,height-1)*width;
-            int bottomRow=clamp(top+1,0,height-1)*width;
-            int targetRow=y*targetWidth;
-            for (int x=0;x<targetWidth;x++) {
-                double sourceX=(x+0.5)*step-0.5;
-                int left=(int)Math.floor(sourceX);
-                double horizontalWeight=sourceX-left;
-                int leftColumn=clamp(left,0,width-1);
-                int rightColumn=clamp(left+1,0,width-1);
-                int topLeft=source[topRow+leftColumn];
-                int topRight=source[topRow+rightColumn];
-                int bottomLeft=source[bottomRow+leftColumn];
-                int bottomRight=source[bottomRow+rightColumn];
-                if (topLeft==topRight&&topLeft==bottomLeft&&topLeft==bottomRight) {
-                    target[targetRow+x]=topLeft;
-                    continue;
+        final int[] source=frame.getOwnedPixels();
+        final int[] target=new int[(int)targetLength];
+        final double step=1.0/scale;
+        parallelRunner.run(targetHeight,new ParallelRunner.Task() {
+            public void run(int y) {
+                long[] matches=MATCH_CACHE.get();
+                double sourceY=(y+0.5)*step-0.5;
+                int top=(int)Math.floor(sourceY);
+                double verticalWeight=sourceY-top;
+                int topRow=clamp(top,0,height-1)*width;
+                int bottomRow=clamp(top+1,0,height-1)*width;
+                int targetRow=y*targetWidth;
+                for (int x=0;x<targetWidth;x++) {
+                    double sourceX=(x+0.5)*step-0.5;
+                    int left=(int)Math.floor(sourceX);
+                    double horizontalWeight=sourceX-left;
+                    int leftColumn=clamp(left,0,width-1);
+                    int rightColumn=clamp(left+1,0,width-1);
+                    int topLeft=source[topRow+leftColumn];
+                    int topRight=source[topRow+rightColumn];
+                    int bottomLeft=source[bottomRow+leftColumn];
+                    int bottomRight=source[bottomRow+rightColumn];
+                    if (topLeft==topRight&&topLeft==bottomLeft&&topLeft==bottomRight) {
+                        target[targetRow+x]=topLeft;
+                        continue;
+                    }
+                    double topLeftWeight=(1.0-horizontalWeight)*(1.0-verticalWeight);
+                    double topRightWeight=horizontalWeight*(1.0-verticalWeight);
+                    double bottomLeftWeight=(1.0-horizontalWeight)*verticalWeight;
+                    double bottomRightWeight=horizontalWeight*verticalWeight;
+                    double alpha=topLeftWeight*alpha(topLeft)+topRightWeight*alpha(topRight)+bottomLeftWeight*alpha(bottomLeft)+bottomRightWeight*alpha(bottomRight);
+                    if (alpha<=0.5) {
+                        target[targetRow+x]=0;
+                        continue;
+                    }
+                    double red=topLeftWeight*premultiplied(topLeft,16)+topRightWeight*premultiplied(topRight,16)+bottomLeftWeight*premultiplied(bottomLeft,16)+bottomRightWeight*premultiplied(bottomRight,16);
+                    double green=topLeftWeight*premultiplied(topLeft,8)+topRightWeight*premultiplied(topRight,8)+bottomLeftWeight*premultiplied(bottomLeft,8)+bottomRightWeight*premultiplied(bottomRight,8);
+                    double blue=topLeftWeight*premultiplied(topLeft,0)+topRightWeight*premultiplied(topRight,0)+bottomLeftWeight*premultiplied(bottomLeft,0)+bottomRightWeight*premultiplied(bottomRight,0);
+                    int interpolatedAlpha=clamp((int)(alpha+0.5),0,255);
+                    int interpolatedRed=clamp((int)(red*255.0/alpha+0.5),0,255);
+                    int interpolatedGreen=clamp((int)(green*255.0/alpha+0.5),0,255);
+                    int interpolatedBlue=clamp((int)(blue*255.0/alpha+0.5),0,255);
+                    int key=(interpolatedAlpha<<24)|(interpolatedRed<<16)|(interpolatedGreen<<8)|interpolatedBlue;
+                    int slot=mix(key)&(MATCH_CACHE_SIZE-1);
+                    long entry=matches[slot];
+                    int matched;
+                    if ((int)(entry>>>32)==key) {
+                        matched=(int)entry;
+                    } else {
+                        matched=nearestPalette(palette,interpolatedRed,interpolatedGreen,interpolatedBlue,interpolatedAlpha)+1;
+                        matches[slot]=((long)key<<32)|(matched&0xFFFFFFFFL);
+                    }
+                    target[targetRow+x]=palette[matched-1];
                 }
-                double topLeftWeight=(1.0-horizontalWeight)*(1.0-verticalWeight);
-                double topRightWeight=horizontalWeight*(1.0-verticalWeight);
-                double bottomLeftWeight=(1.0-horizontalWeight)*verticalWeight;
-                double bottomRightWeight=horizontalWeight*verticalWeight;
-                double alpha=topLeftWeight*alpha(topLeft)+topRightWeight*alpha(topRight)+bottomLeftWeight*alpha(bottomLeft)+bottomRightWeight*alpha(bottomRight);
-                if (alpha<=0.5) {
-                    target[targetRow+x]=0;
-                    continue;
-                }
-                double red=topLeftWeight*premultiplied(topLeft,16)+topRightWeight*premultiplied(topRight,16)+bottomLeftWeight*premultiplied(bottomLeft,16)+bottomRightWeight*premultiplied(bottomRight,16);
-                double green=topLeftWeight*premultiplied(topLeft,8)+topRightWeight*premultiplied(topRight,8)+bottomLeftWeight*premultiplied(bottomLeft,8)+bottomRightWeight*premultiplied(bottomRight,8);
-                double blue=topLeftWeight*premultiplied(topLeft,0)+topRightWeight*premultiplied(topRight,0)+bottomLeftWeight*premultiplied(bottomLeft,0)+bottomRightWeight*premultiplied(bottomRight,0);
-                int interpolatedAlpha=clamp((int)(alpha+0.5),0,255);
-                int interpolatedRed=clamp((int)(red*255.0/alpha+0.5),0,255);
-                int interpolatedGreen=clamp((int)(green*255.0/alpha+0.5),0,255);
-                int interpolatedBlue=clamp((int)(blue*255.0/alpha+0.5),0,255);
-                int key=((interpolatedAlpha>>>3)<<15)|((interpolatedRed>>>3)<<10)|((interpolatedGreen>>>3)<<5)|(interpolatedBlue>>>3);
-                int matched=matches[key];
-                if (matched==0) {
-                    matched=nearestPalette(palette,interpolatedRed,interpolatedGreen,interpolatedBlue,interpolatedAlpha)+1;
-                    matches[key]=matched;
-                }
-                target[targetRow+x]=palette[matched-1];
             }
-        }
+        });
         return RasterFrame.wrap(targetWidth,targetHeight,target);
     }
 
